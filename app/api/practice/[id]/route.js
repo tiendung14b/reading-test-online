@@ -1,22 +1,30 @@
-import db from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
   try {
+    const db = getDb();
     const { id } = await params;
 
-    const exercise = db.prepare('SELECT * FROM exercises WHERE id = ?').get(id);
+    const exResult = await db.execute({
+      sql: 'SELECT * FROM exercises WHERE id = ?',
+      args: [id],
+    });
+
+    const exercise = exResult.rows[0];
 
     if (!exercise) {
       return NextResponse.json({ error: 'Exercise not found' }, { status: 404 });
     }
 
-    const questions = db.prepare('SELECT id, exercise_id, question_text, options, order_index FROM questions WHERE exercise_id = ? ORDER BY order_index ASC').all(id);
+    const qResult = await db.execute({
+      sql: 'SELECT id, exercise_id, question_text, options, order_index FROM questions WHERE exercise_id = ? ORDER BY order_index ASC',
+      args: [id],
+    });
 
-    // Parse options for convenience on the frontend
-    const parsedQuestions = questions.map(q => ({
+    const parsedQuestions = qResult.rows.map(q => ({
       ...q,
-      options: JSON.parse(q.options)
+      options: JSON.parse(q.options),
     }));
 
     return NextResponse.json({ ...exercise, questions: parsedQuestions });

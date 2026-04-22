@@ -1,13 +1,18 @@
-import db from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
   try {
+    const db = getDb();
     const { id } = await params;
-    const { answers } = await request.json(); // { [question_id]: "A", ... }
+    const { answers } = await request.json();
 
-    // Fetch the correct answers from the database
-    const questions = db.prepare('SELECT id, correct_answer FROM questions WHERE exercise_id = ?').all(id);
+    const qResult = await db.execute({
+      sql: 'SELECT id, correct_answer FROM questions WHERE exercise_id = ?',
+      args: [id],
+    });
+
+    const questions = qResult.rows;
 
     if (!questions || questions.length === 0) {
       return NextResponse.json({ error: 'Questions not found' }, { status: 404 });
@@ -23,23 +28,26 @@ export async function POST(request, { params }) {
       if (isCorrect) score += 1;
 
       resultDetails.push({
-        question_id: q.id,
+        question_id: Number(q.id),
         user_answer: userAnswer,
         correct_answer: q.correct_answer,
-        isCorrect
+        isCorrect,
       });
     }
 
-    // Save the result to the database
-    const insertResult = db.prepare('INSERT INTO results (exercise_id, score, user_answers) VALUES (?, ?, ?)');
-    const result = insertResult.run(id, Math.round((score / total) * 100), JSON.stringify(answers));
+    const pctScore = Math.round((score / total) * 100);
+
+    const insertResult = await db.execute({
+      sql: 'INSERT INTO results (exercise_id, score, user_answers) VALUES (?, ?, ?)',
+      args: [id, pctScore, JSON.stringify(answers)],
+    });
 
     return NextResponse.json({
       success: true,
-      result_id: result.lastInsertRowid,
+      result_id: Number(insertResult.lastInsertRowid),
       score,
       total,
-      details: resultDetails
+      details: resultDetails,
     });
   } catch (error) {
     console.error(error);
