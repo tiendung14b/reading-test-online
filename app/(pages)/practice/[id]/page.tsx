@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, ReactNode, Fragment, useRef } from 'react';
+import { useEffect, useState, Fragment, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Dialog, Transition } from '@headlessui/react';
-import { BookOpen, CheckCircle, XCircle, X, ChevronLeft } from 'lucide-react';
+import { Dialog, Listbox, Transition } from '@headlessui/react';
+import { BookOpen, CheckCircle, XCircle, X, ChevronLeft, ChevronDown, Check } from 'lucide-react';
 
 type Question = {
   id: number;
@@ -126,38 +126,86 @@ export default function PracticePage() {
         const isCorrect = detail?.isCorrect;
 
         return (
-          <span key={idx} className="inline-block mx-0.5 align-baseline">
-            <select
-              value={results ? (answers[q.id] || '') : (answers[q.id] || '')}
-              onChange={e => {
-                if (!results) handleSelectAnswer(q.id, e.target.value);
-              }}
-              style={{
-                height: '28px',
-                padding: '0 8px',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 600,
-                border: `1.5px solid ${results
-                  ? (isCorrect ? 'rgba(0,212,170,0.6)' : 'rgba(255,77,109,0.6)')
-                  : 'rgba(255,255,255,0.2)'
-                }`,
-                background: results
-                  ? (isCorrect ? 'rgba(0,212,170,0.12)' : 'rgba(255,77,109,0.12)')
-                  : 'rgba(255,255,255,0.08)',
-                color: results
-                  ? (isCorrect ? '#00d4aa' : '#ff4d6d')
-                  : 'var(--text-primary)',
-                outline: 'none',
-                cursor: 'pointer',
-                pointerEvents: results ? 'auto' : undefined,
-              }}
+          <span key={idx} className="inline-block mx-1 align-middle relative">
+            <Listbox
+              value={answers[q.id] || ''}
+              onChange={(val) => { if (!results) handleSelectAnswer(q.id, val); }}
+              disabled={false}
             >
-              <option value="" disabled>#</option>
-              {Object.entries(q.options).map(([label, text]) => (
-                <option key={label} value={label}>{label}{text ? `. ${text}` : ''}</option>
-              ))}
-            </select>
+              <div className="relative inline-block">
+                <Listbox.Button
+                  className="inline-flex items-center gap-1.5 px-2.5 rounded-lg text-[13px] font-semibold transition-all"
+                  style={{
+                    height: '28px',
+                    border: `1.5px solid ${
+                      results
+                        ? (isCorrect ? 'rgba(0,212,170,0.6)' : 'rgba(255,77,109,0.6)')
+                        : 'rgba(255,255,255,0.2)'
+                    }`,
+                    background: results
+                      ? (isCorrect ? 'rgba(0,212,170,0.12)' : 'rgba(255,77,109,0.12)')
+                      : 'rgba(255,255,255,0.07)',
+                    color: results
+                      ? (isCorrect ? '#00d4aa' : '#ff4d6d')
+                      : answers[q.id] ? 'var(--text-primary)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    backdropFilter: 'blur(4px)',
+                    minWidth: '60px',
+                  }}
+                >
+                  <span>
+                    {answers[q.id]
+                      ? `${answers[q.id]}${q.options[answers[q.id]] ? `. ${q.options[answers[q.id]].slice(0, 20)}${q.options[answers[q.id]].length > 20 ? '…' : ''}` : ''}`
+                      : '— select —'}
+                  </span>
+                  {!results && <ChevronDown className="w-3 h-3 shrink-0 opacity-50" />}
+                </Listbox.Button>
+
+                <Transition
+                  as={Fragment}
+                  leave="transition ease-in duration-100"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Listbox.Options
+                    className="absolute z-50 mt-1 rounded-xl overflow-hidden focus:outline-none"
+                    style={{
+                      background: '#1a1f2e',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                      minWidth: '200px',
+                      left: 0,
+                    }}
+                  >
+                    {Object.entries(q.options).map(([label, text]) => (
+                      <Listbox.Option key={label} value={label} as={Fragment}>
+                        {({ active, selected }) => (
+                          <li
+                            className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
+                            style={{
+                              background: active ? 'rgba(0,212,170,0.1)' : 'transparent',
+                              color: selected ? '#00d4aa' : active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                            }}
+                          >
+                            <span
+                              className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-black shrink-0"
+                              style={{
+                                background: selected ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                                color: selected ? '#0b0f19' : 'var(--text-muted)',
+                              }}
+                            >{label}</span>
+                            <span className="text-[13px] flex-1">{text || `Option ${label}`}</span>
+                            {selected && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: '#00d4aa' }} />}
+                          </li>
+                        )}
+                      </Listbox.Option>
+                    ))}
+                  </Listbox.Options>
+                </Transition>
+              </div>
+            </Listbox>
+
             {results && !isCorrect && detail && (
               <span className="text-[11px] ml-1 font-semibold" style={{ color: '#00d4aa' }}>
                 → {detail.correct_answer}
