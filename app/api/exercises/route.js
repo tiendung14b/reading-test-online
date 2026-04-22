@@ -16,7 +16,7 @@ export async function GET() {
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Failed to fetch exercises' }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -56,6 +56,6 @@ export async function POST(request) {
     return NextResponse.json({ id: exerciseId, success: true }, { status: 201 });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Failed to create exercise' }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

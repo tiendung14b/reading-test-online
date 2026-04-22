@@ -30,6 +30,6 @@ export async function GET(request, { params }) {
     return NextResponse.json({ ...exercise, questions: parsedQuestions });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Failed to fetch exercise' }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
