@@ -12,6 +12,13 @@ type Question = {
   correct_answer: string;
 };
 
+type VocabularyEntry = {
+  word: string;
+  meaning: string;
+  phonetic: string;
+  example: string;
+};
+
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
@@ -28,6 +35,7 @@ export default function CreateTest() {
   const [content, setContent] = useState('');
   const [type, setType] = useState('reading');
   const [questions, setQuestions] = useState<Question[]>([makeQuestion()]);
+  const [vocabulary, setVocabulary] = useState<VocabularyEntry[]>([]);
   const [bulkText, setBulkText] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -45,6 +53,14 @@ export default function CreateTest() {
     const arr = [...questions];
     arr[qIdx] = { ...arr[qIdx], options: { ...arr[qIdx].options, [label]: text } };
     setQuestions(arr);
+  };
+
+  const handleAddVocab = () => setVocabulary([...vocabulary, { word: '', meaning: '', phonetic: '', example: '' }]);
+  const handleRemoveVocab = (i: number) => {
+    const arr = [...vocabulary]; arr.splice(i, 1); setVocabulary(arr);
+  };
+  const updateVocab = (i: number, patch: Partial<VocabularyEntry>) => {
+    const arr = [...vocabulary]; arr[i] = { ...arr[i], ...patch }; setVocabulary(arr);
   };
 
   /* ── Bulk Parser ── */
@@ -174,7 +190,7 @@ export default function CreateTest() {
       const res = await fetch('/api/exercises', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, type, questions }),
+        body: JSON.stringify({ title, content, type, questions, vocabulary }),
       });
       if (res.ok) { router.push('/'); router.refresh(); }
       else { const e = await res.json(); alert('Error: ' + e.error); }
@@ -307,6 +323,88 @@ D. Tokyo`;
             >
               <Zap className="w-3.5 h-3.5" /> Parse & Import
             </button>
+          </div>
+
+          {/* Vocabulary Section */}
+          <div className="mt-10 mb-20">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-text-primary">Vocabulary</h2>
+                <p className="text-[11px] text-text-muted mt-1">Add key words for flashcards</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddVocab}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Word
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {vocabulary.map((v, i) => (
+                <div key={i} className="card-glass rounded-2xl p-5 relative group">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveVocab(i)}
+                    className="absolute top-4 right-4 p-2 text-text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block mb-1.5">Word</label>
+                      <input
+                        type="text"
+                        value={v.word}
+                        onChange={e => updateVocab(i, { word: e.target.value })}
+                        className="input-dark w-full px-3 py-2 text-sm"
+                        placeholder="e.g., Meticulous"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block mb-1.5">Phonetic</label>
+                      <input
+                        type="text"
+                        value={v.phonetic}
+                        onChange={e => updateVocab(i, { phonetic: e.target.value })}
+                        className="input-dark w-full px-3 py-2 text-sm"
+                        placeholder="e.g., /məˈtɪkjələs/"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block mb-1.5">Meaning</label>
+                    <input
+                      type="text"
+                      value={v.meaning}
+                      onChange={e => updateVocab(i, { meaning: e.target.value })}
+                      className="input-dark w-full px-3 py-2 text-sm"
+                      placeholder="Enter word meaning..."
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block mb-1.5">Example Sentence</label>
+                    <textarea
+                      rows={2}
+                      value={v.example}
+                      onChange={e => updateVocab(i, { example: e.target.value })}
+                      className="input-dark w-full px-3 py-2 text-sm resize-none"
+                      placeholder="Use the word in a sentence..."
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {vocabulary.length === 0 && (
+                <div className="py-12 text-center rounded-2xl border border-dashed border-white/10">
+                  <p className="text-sm text-text-muted italic">No vocabulary added yet.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -25,7 +25,7 @@ export async function POST(request) {
     const db = await getDb();
 
     const body = await request.json();
-    const { title, content, type, questions } = body;
+    const { title, content, type, questions, vocabulary } = body;
 
     if (!title || !content || !type || !questions) {
       return NextResponse.json({ error: 'Missing Required Fields' }, { status: 400 });
@@ -51,6 +51,34 @@ export async function POST(request) {
           index,
         ],
       });
+    }
+
+    // Insert/Link Vocabulary
+    if (vocabulary && Array.isArray(vocabulary)) {
+      for (const v of vocabulary) {
+        // Find or Create vocabulary
+        let vocabId;
+        const existing = await db.execute({
+          sql: 'SELECT id FROM vocabularies WHERE word = ? AND meaning = ?',
+          args: [v.word, v.meaning]
+        });
+
+        if (existing.rows.length > 0) {
+          vocabId = existing.rows[0].id;
+        } else {
+          const vResult = await db.execute({
+            sql: 'INSERT INTO vocabularies (word, meaning, phonetic, example) VALUES (?, ?, ?, ?)',
+            args: [v.word, v.meaning, v.phonetic || '', v.example || '']
+          });
+          vocabId = vResult.lastInsertRowid;
+        }
+
+        // Link to exercise
+        await db.execute({
+          sql: 'INSERT OR IGNORE INTO exercise_vocabularies (exercise_id, vocabulary_id) VALUES (?, ?)',
+          args: [exerciseId, vocabId]
+        });
+      }
     }
 
     return NextResponse.json({ id: exerciseId, success: true }, { status: 201 });

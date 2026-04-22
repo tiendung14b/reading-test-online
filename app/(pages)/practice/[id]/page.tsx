@@ -3,13 +3,21 @@
 import { useEffect, useState, Fragment, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Dialog, Listbox, Transition } from '@headlessui/react';
-import { BookOpen, CheckCircle, XCircle, X, ChevronLeft, ChevronDown, Check } from 'lucide-react';
+import { BookOpen, CheckCircle, XCircle, X, ChevronLeft, ChevronDown, Check, GraduationCap, Edit3 } from 'lucide-react';
 
 type Question = {
   id: number;
   question_text: string;
   options: Record<string, string>; // { A: "text", B: "text", ... }
   order_index: number;
+};
+
+type Vocabulary = {
+  id: number;
+  word: string;
+  meaning: string;
+  phonetic: string;
+  example: string;
 };
 
 type Exercise = {
@@ -40,6 +48,7 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [results, setResults] = useState<{ score: number; total: number; details: ResultDetail[] } | null>(null);
+  const [vocab, setVocab] = useState<Vocabulary[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFab, setShowFab] = useState(false);
@@ -73,6 +82,10 @@ export default function PracticePage() {
         }
         setLoading(false);
       });
+
+    fetch(`/api/practice/${id}/vocabulary`)
+      .then(res => res.json())
+      .then(data => setVocab(Array.isArray(data) ? data : []));
   }, [id]);
 
   const handleSelectAnswer = (qId: number, ans: string) => {
@@ -270,6 +283,22 @@ export default function PracticePage() {
             <h1 className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
               {exercise.title}
             </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push(`/practice/${id}/flashcards`)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20"
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Study Flashcards</span>
+            </button>
+            <button
+              onClick={() => router.push(`/edit/${id}`)}
+              className="p-1.5 rounded-lg text-text-muted hover:bg-white/5 hover:text-text-secondary transition-all"
+              title="Edit Exercise"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -541,6 +570,40 @@ export default function PracticePage() {
               </div>
             );
           })}
+
+          {/* Vocabulary Section */}
+          {vocab.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-white/5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted">Key Vocabulary</h3>
+                <button 
+                  onClick={() => router.push(`/practice/${id}/flashcards`)}
+                  className="text-[10px] font-bold uppercase tracking-widest text-accent hover:underline"
+                >
+                  View All Cards
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {vocab.slice(0, 5).map(v => (
+                  <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div>
+                      <p className="text-sm font-bold text-text-primary">{v.word}</p>
+                      <p className="text-[10px] text-text-muted">{v.phonetic}</p>
+                    </div>
+                    <p className="text-xs text-text-secondary italic">{v.meaning}</p>
+                  </div>
+                ))}
+                {vocab.length > 5 && (
+                  <button 
+                    onClick={() => router.push(`/practice/${id}/flashcards`)}
+                    className="p-3 rounded-xl border border-dashed border-white/10 text-xs text-text-muted hover:text-text-secondary hover:border-white/20 transition-all"
+                  >
+                    + {vocab.length - 5} more words. Practice with Flashcards →
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Submit footer */}

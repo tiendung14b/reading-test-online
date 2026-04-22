@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { BookOpen, FileText, Trophy, Clock, Plus, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { BookOpen, FileText, Trophy, Clock, Plus, ArrowRight, Search, Filter, Edit3 } from 'lucide-react';
 
 type Exercise = {
   id: number;
@@ -14,8 +14,11 @@ type Exercise = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'reading' | 'cloze'>('all');
 
   useEffect(() => {
     fetch('/api/exercises')
@@ -23,12 +26,13 @@ export default function Home() {
       .then(data => { setExercises(Array.isArray(data) ? data : []); setLoading(false); });
   }, []);
 
-  const stats = [
-    { label: 'Total Exercises', value: exercises.length, icon: BookOpen, color: '#00d4aa' },
-    { label: 'Completed', value: exercises.filter(e => e.last_attempt).length, icon: Trophy, color: '#f59e0b' },
-    { label: 'Reading Tests', value: exercises.filter(e => e.type === 'reading').length, icon: FileText, color: '#60a5fa' },
-    { label: 'Cloze Tests', value: exercises.filter(e => e.type === 'cloze').length, icon: FileText, color: '#a78bfa' },
-  ];
+
+
+  const filteredExercises = exercises.filter(ex => {
+    const matchesSearch = ex.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === 'all' || ex.type === typeFilter;
+    return matchesSearch && matchesType;
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -43,44 +47,50 @@ export default function Home() {
             Your Exercises
           </h1>
         </div>
-        <Link
-          href="/create"
-          className="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          New Exercise
-        </Link>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="card-glass rounded-2xl p-5"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: `${stat.color}18` }}
-              >
-                <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-              </div>
-              <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                {loading ? '—' : stat.value}
-              </span>
-            </div>
-            <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              {stat.label}
-            </p>
-          </div>
-        ))}
+
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        {/* Search */}
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <input
+            type="text"
+            placeholder="Search exercises by title..."
+            className="input-dark w-full pl-11 py-3 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {/* Type Tabs */}
+        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+          {(['all', 'reading', 'cloze'] as const).map((type) => (
+            <button
+              key={type}
+              onClick={() => setTypeFilter(type)}
+              className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                typeFilter === type 
+                  ? 'bg-accent text-[#0b0f19] shadow-lg shadow-accent/20' 
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Section title */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-          All Exercises
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted">
+          {typeFilter === 'all' ? 'All Exercises' : `${typeFilter} Exercises`}
+          {searchQuery && <span className="ml-2 font-normal lowercase">matching "{searchQuery}"</span>}
+          <span className="ml-2 text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-text-secondary">
+            {filteredExercises.length}
+          </span>
         </h2>
       </div>
 
@@ -118,14 +128,13 @@ export default function Home() {
       )}
 
       {/* Exercise Grid */}
-      {!loading && exercises.length > 0 && (
+      {!loading && filteredExercises.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {exercises.map((ex) => (
-            <Link
+          {filteredExercises.map((ex) => (
+            <div
               key={ex.id}
-              href={`/practice/${ex.id}`}
-              className="card-glass rounded-2xl p-6 group transition-all duration-300 hover:-translate-y-1 block"
-              style={{ textDecoration: 'none' }}
+              onClick={() => router.push(`/practice/${ex.id}`)}
+              className="card-glass rounded-2xl p-6 group transition-all duration-300 hover:-translate-y-1 cursor-pointer"
             >
               {/* Top row */}
               <div className="flex items-center justify-between mb-4">
@@ -134,14 +143,24 @@ export default function Home() {
                 >
                   {ex.type === 'reading' ? 'Reading' : 'Cloze'}
                 </span>
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:bg-accent"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}
-                >
-                  <ArrowRight
-                    className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5"
-                    style={{ color: 'var(--text-muted)' }}
-                  />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); router.push(`/edit/${ex.id}`); }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 hover:bg-accent/10 hover:text-accent border-none outline-none"
+                    style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}
+                    title="Edit Exercise"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:bg-accent"
+                    style={{ background: 'rgba(255,255,255,0.04)' }}
+                  >
+                    <ArrowRight
+                      className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-[#0b0f19]"
+                      style={{ color: 'var(--text-muted)' }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -171,8 +190,25 @@ export default function Home() {
                   </span>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
+        </div>
+      )}
+
+      {/* No results from filter */}
+      {!loading && exercises.length > 0 && filteredExercises.length === 0 && (
+        <div className="card-glass rounded-2xl flex flex-col items-center justify-center py-20 text-center">
+          <Search className="w-12 h-12 text-text-muted mb-4 opacity-20" />
+          <h3 className="text-lg font-semibold mb-2 text-text-primary">No results found</h3>
+          <p className="text-sm text-text-muted mb-6">
+            Try adjusting your search or filters to find what you're looking for.
+          </p>
+          <button 
+            onClick={() => { setSearchQuery(''); setTypeFilter('all'); }}
+            className="text-accent text-sm font-bold hover:underline"
+          >
+            Clear all filters
+          </button>
         </div>
       )}
     </div>

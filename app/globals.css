@@ -27,6 +27,7 @@
   --color-accent: var(--accent);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
   --font-sans: 'Inter', system-ui, sans-serif;
 }
 
