@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { BookOpen, FileText, Trophy, Clock, Plus, ArrowRight, Search, Filter, Edit3 } from 'lucide-react';
 
 type Exercise = {
