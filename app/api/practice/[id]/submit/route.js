@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
   try {
-    const db = getDb();
+    const db = await getDb();
     const { id } = await params;
     const { answers } = await request.json();
 

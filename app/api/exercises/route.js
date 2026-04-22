@@ -1,9 +1,9 @@
-import { getDb, initDb } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const db = getDb();
+    const db = await getDb();
 
     const result = await db.execute(`
       SELECT e.*,
@@ -22,8 +22,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const db = getDb();
-    await initDb();
+    const db = await getDb();
 
     const body = await request.json();
     const { title, content, type, questions } = body;

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
   try {
-    const db = getDb();
+    const db = await getDb();
     const { id } = await params;
 
     const exResult = await db.execute({
