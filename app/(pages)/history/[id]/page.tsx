@@ -168,31 +168,58 @@ export default function HistoryDetailPage() {
                   <span className="text-xs font-semibold text-text-muted">Question {idx + 1}</span>
                   {isCorrect ? <CheckCircle className="w-4 h-4 text-accent" /> : <XCircle className="w-4 h-4 text-danger" />}
                 </div>
-                {data.type === 'reading' && <p className="text-sm font-medium mb-4 text-text-primary">{q.question_text}</p>}
+                {data.type !== 'cloze' && <p className="text-sm font-medium mb-4 text-text-primary">{q.question_text}</p>}
                 
-                <div className="space-y-2">
-                  {Object.entries(q.options).map(([label, text]) => {
-                    const isSelected = userAns === label;
-                    const isCorrectOpt = q.correct_answer === label;
-                    return (
-                      <div key={label} className="flex items-center gap-3 px-4 py-3 rounded-xl border" style={{
-                        background: isCorrectOpt ? 'rgba(0,212,170,0.08)' : isSelected && !isCorrect ? 'rgba(255,77,109,0.08)' : 'rgba(255,255,255,0.02)',
-                        borderColor: isCorrectOpt ? 'rgba(0,212,170,0.3)' : isSelected && !isCorrect ? 'rgba(255,77,109,0.3)' : 'var(--border)'
-                      }}>
-                        <span className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black shrink-0" style={{
-                          background: isCorrectOpt ? 'var(--accent)' : isSelected && !isCorrect ? '#ff4d6d' : 'rgba(255,255,255,0.06)',
-                          color: isCorrectOpt || (isSelected && !isCorrect) ? '#0b0f19' : 'var(--text-muted)'
-                        }}>{label}</span>
-                        <span className="text-sm flex-1" style={{
-                          color: isCorrectOpt ? '#00d4aa' : isSelected && !isCorrect ? '#ff4d6d' : 'var(--text-secondary)',
-                          fontWeight: isSelected || isCorrectOpt ? 600 : 400
-                        }}>{text}</span>
-                        {isCorrectOpt && <CheckCircle className="w-4 h-4 text-accent" />}
-                        {isSelected && !isCorrect && <XCircle className="w-4 h-4 text-danger" />}
-                      </div>
-                    );
-                  })}
-                </div>
+                {data.type === 'rewriting' ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-widest w-16 shrink-0 text-text-muted">Your:</span>
+                      <span
+                        className="text-xs font-semibold px-2 py-0.5 rounded"
+                        style={{
+                          background: isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)',
+                          color: isCorrect ? '#00d4aa' : '#ff4d6d',
+                        }}
+                      >
+                        {userAns || '—'}
+                      </span>
+                    </div>
+                    <div className="p-4 rounded-xl mt-3" style={{ background: isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)', border: `1px solid ${isCorrect ? 'rgba(0,212,170,0.2)' : 'rgba(255,77,109,0.2)'}` }}>
+                       <p className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: isCorrect ? '#00d4aa' : '#ff4d6d' }}>
+                         {isCorrect ? 'Correct!' : 'Accepted Answers:'}
+                       </p>
+                       <ul className="text-sm space-y-1.5" style={{ color: 'var(--text-secondary)' }}>
+                         {Object.values(q.options).filter(Boolean).map((opt, i) => (
+                           <li key={i} className="flex gap-2"><span style={{ color: 'var(--accent)' }}>•</span> {opt}</li>
+                         ))}
+                       </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {Object.entries(q.options).map(([label, text]) => {
+                      const isSelected = userAns === label;
+                      const isCorrectOpt = q.correct_answer === label;
+                      return (
+                        <div key={label} className="flex items-center gap-3 px-4 py-3 rounded-xl border" style={{
+                          background: isCorrectOpt ? 'rgba(0,212,170,0.08)' : isSelected && !isCorrect ? 'rgba(255,77,109,0.08)' : 'rgba(255,255,255,0.02)',
+                          borderColor: isCorrectOpt ? 'rgba(0,212,170,0.3)' : isSelected && !isCorrect ? 'rgba(255,77,109,0.3)' : 'var(--border)'
+                        }}>
+                          <span className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black shrink-0" style={{
+                            background: isCorrectOpt ? 'var(--accent)' : isSelected && !isCorrect ? '#ff4d6d' : 'rgba(255,255,255,0.06)',
+                            color: isCorrectOpt || (isSelected && !isCorrect) ? '#0b0f19' : 'var(--text-muted)'
+                          }}>{label}</span>
+                          <span className="text-sm flex-1" style={{
+                            color: isCorrectOpt ? '#00d4aa' : isSelected && !isCorrect ? '#ff4d6d' : 'var(--text-secondary)',
+                            fontWeight: isSelected || isCorrectOpt ? 600 : 400
+                          }}>{text}</span>
+                          {isCorrectOpt && <CheckCircle className="w-4 h-4 text-accent" />}
+                          {isSelected && !isCorrect && <XCircle className="w-4 h-4 text-danger" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

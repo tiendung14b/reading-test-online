@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { BookOpen, ListChecks, Plus, Trash2, Save, Zap, FileText, ChevronLeft } from 'lucide-react';
+import { BookOpen, ListChecks, Plus, Trash2, Save, Zap, FileText, ChevronLeft, PenTool, AlertTriangle, X } from 'lucide-react';
+import { Dialog, Transition } from '@headlessui/react';
+import toast from 'react-hot-toast';
 
 type OptionMap = Record<string, string>;
 
@@ -40,6 +42,8 @@ export default function EditTest() {
   const [bulkText, setBulkText] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetch(`/api/practice/${id}`)
@@ -157,17 +161,30 @@ export default function EditTest() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, content, type, questions, vocabulary }),
       });
-      if (res.ok) { router.push(`/practice/${id}`); router.refresh(); }
-    } catch { alert('Update failed'); }
+      if (res.ok) { 
+        toast.success('Update successful');
+        router.push(`/practice/${id}`); 
+        router.refresh(); 
+      }
+    } catch { toast.error('Update failed'); }
     finally { setSaving(false); }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this exercise?')) return;
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    setDeleting(true);
     try {
       const res = await fetch(`/api/practice/${id}`, { method: 'DELETE' });
-      if (res.ok) { router.push('/'); router.refresh(); }
-    } catch { alert('Delete failed'); }
+      if (res.ok) { 
+        toast.success('Exercise deleted');
+        router.push('/'); 
+        router.refresh(); 
+      }
+    } catch { toast.error('Delete failed'); }
+    finally { setDeleting(false); }
   };
 
   if (loading) return <div className="h-full flex items-center justify-center bg-bg-base"><div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin border-accent" /></div>;
@@ -198,8 +215,8 @@ export default function EditTest() {
             {/* Type selector */}
             <div className="mb-8">
               <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block mb-4">Exercise Type</label>
-              <div className="grid grid-cols-2 gap-4">
-                {[{ v: 'reading', l: 'Reading', i: BookOpen }, { v: 'cloze', l: 'Cloze Test', i: ListChecks }].map(t => (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[{ v: 'reading', l: 'Reading', i: BookOpen }, { v: 'cloze', l: 'Cloze Test', i: ListChecks }, { v: 'rewriting', l: 'Rewriting', i: PenTool }].map(t => (
                   <button key={t.v} onClick={() => setType(t.v)} className={`p-5 rounded-2xl text-left border transition-all ${type === t.v ? 'bg-accent/10 border-accent/40 text-accent' : 'bg-white/5 border-border text-text-secondary'}`}>
                     <t.i className="w-5 h-5 mb-2" />
                     <span className="font-bold text-sm">{t.l}</span>
@@ -220,14 +237,16 @@ export default function EditTest() {
             </div>
 
             {/* Bulk Import */}
-            <div className="mt-10 p-6 rounded-2xl bg-accent/5 border border-accent/20">
-              <div className="flex items-center gap-2 mb-4 text-accent">
-                <Zap className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Quick Import Questions</span>
+            {type !== 'rewriting' && (
+              <div className="mt-10 p-6 rounded-2xl bg-accent/5 border border-accent/20">
+                <div className="flex items-center gap-2 mb-4 text-accent">
+                  <Zap className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Quick Import Questions</span>
+                </div>
+                <textarea rows={6} value={bulkText} onChange={e => setBulkText(e.target.value)} className="input-dark w-full px-4 py-3 text-xs mb-4 font-mono" placeholder="Paste questions here to parse..." />
+                <button onClick={parseBulk} className="btn-primary px-5 py-2.5 text-xs">Import & Replace Questions</button>
               </div>
-              <textarea rows={6} value={bulkText} onChange={e => setBulkText(e.target.value)} className="input-dark w-full px-4 py-3 text-xs mb-4 font-mono" placeholder="Paste questions here to parse..." />
-              <button onClick={parseBulk} className="btn-primary px-5 py-2.5 text-xs">Import & Replace Questions</button>
-            </div>
+            )}
 
             {/* Vocabulary Section */}
             <div className="mt-12 mb-20">
@@ -267,7 +286,7 @@ export default function EditTest() {
         </div>
 
         {/* Right Questions Panel */}
-        <div className="w-96 shrink-0 bg-bg-surface flex flex-col">
+        <div className="w-96 shrink-0 bg-bg-surface flex flex-col border-l border-white/5">
           <div className="p-5 flex items-center justify-between">
             <span className="text-sm font-bold text-text-primary">Questions ({questions.length})</span>
             <button onClick={handleAddQuestion} className="w-9 h-9 rounded-xl flex items-center justify-center bg-accent/10 text-accent border border-accent/20 transition-all hover:bg-accent/20"><Plus className="w-5 h-5" /></button>
@@ -279,12 +298,17 @@ export default function EditTest() {
                   <span className="text-[10px] font-bold text-text-muted uppercase">Question #{i + 1}</span>
                   <button onClick={() => handleRemoveQuestion(i)} className="text-text-muted hover:text-danger"><Trash2 className="w-4 h-4" /></button>
                 </div>
-                <input value={q.question_text} onChange={e => updateQuestion(i, { question_text: e.target.value })} className="input-dark w-full px-3 py-2 text-xs mb-4" placeholder="Enter question..." />
+                <input value={q.question_text} onChange={e => updateQuestion(i, { question_text: e.target.value })} className="input-dark w-full px-3 py-2 text-xs mb-4" placeholder={type === 'cloze' ? 'Blank label (optional)' : type === 'rewriting' ? 'Original sentence' : 'Enter question...'} />
                 <div className="space-y-2">
-                  {['A','B','C','D'].map(l => (
-                    <div key={l} className="flex gap-2">
-                      <button onClick={() => updateQuestion(i, { correct_answer: l })} className={`w-7 h-7 rounded-lg text-[10px] font-black shrink-0 transition-all ${q.correct_answer === l ? 'bg-accent text-[#0b0f19] shadow-lg shadow-accent/30' : 'bg-white/5 text-text-muted border border-white/5'}`}>{l}</button>
-                      <input value={q.options[l] || ''} onChange={e => updateOption(i, l, e.target.value)} className="input-dark flex-1 px-2.5 py-1.5 text-xs" />
+                  {['A','B','C','D'].map((l, optIndex) => (
+                    <div key={l} className="flex gap-2 items-center">
+                      {type !== 'rewriting' && (
+                        <button onClick={() => updateQuestion(i, { correct_answer: l })} className={`w-7 h-7 rounded-lg text-[10px] font-black shrink-0 transition-all ${q.correct_answer === l ? 'bg-accent text-[#0b0f19] shadow-lg shadow-accent/30' : 'bg-white/5 text-text-muted border border-white/5'}`}>{l}</button>
+                      )}
+                      {type === 'rewriting' && (
+                        <span className="text-[10px] font-bold text-text-muted w-6 text-center">{optIndex + 1}.</span>
+                      )}
+                      <input value={q.options[l] || ''} onChange={e => updateOption(i, l, e.target.value)} className="input-dark flex-1 px-2.5 py-1.5 text-xs" placeholder={type === 'rewriting' ? 'Acceptable answer...' : `Option ${l} content...`} />
                     </div>
                   ))}
                 </div>
@@ -293,6 +317,47 @@ export default function EditTest() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Transition appear show={showDeleteModal} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => !deleting && setShowDeleteModal(false)}>
+          <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+          </Transition.Child>
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-bg-surface border border-border p-6 text-left align-middle shadow-xl transition-all">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-3 text-danger">
+                      <div className="p-2 bg-danger/10 rounded-lg">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <Dialog.Title as="h3" className="text-lg font-bold leading-6">Delete Exercise</Dialog.Title>
+                    </div>
+                    <button onClick={() => !deleting && setShowDeleteModal(false)} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-5 h-5" /></button>
+                  </div>
+                  <div className="mt-2 mb-8">
+                    <p className="text-sm text-text-secondary leading-relaxed">
+                      Are you sure you want to delete <span className="font-semibold text-text-primary">"{title || 'this exercise'}"</span>? This action cannot be undone and will permanently remove all associated questions and vocabulary.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-end gap-3">
+                    <button type="button" onClick={() => setShowDeleteModal(false)} disabled={deleting} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-white/5 transition-all">Cancel</button>
+                    <button type="button" onClick={confirmDelete} disabled={deleting} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-danger text-white hover:bg-danger/90 transition-all flex items-center gap-2 shadow-lg shadow-danger/20">
+                      {deleting ? (
+                        <><div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Deleting...</>
+                      ) : (
+                        <><Trash2 className="w-4 h-4" /> Delete Exercise</>
+                      )}
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }

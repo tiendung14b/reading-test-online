@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, ListChecks, Plus, Trash2, Save, Zap, FileText } from 'lucide-react';
+import { BookOpen, ListChecks, Plus, Trash2, Save, Zap, FileText, PenTool } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 type OptionMap = Record<string, string>; // { A: "text", B: "text", ... }
 
@@ -66,7 +67,7 @@ export default function CreateTest() {
   /* ── Bulk Parser ── */
   const parseBulk = () => {
     const raw = bulkText.trim();
-    if (!raw) { alert('Textarea is empty'); return; }
+    if (!raw) { toast.error('Textarea is empty'); return; }
 
     if (type === 'cloze') {
       // Cloze format:
@@ -117,9 +118,9 @@ export default function CreateTest() {
         }
       }
 
-      if (parsed.length === 0) { alert('Could not parse any cloze questions.'); return; }
+      if (parsed.length === 0) { toast.error('Could not parse any cloze questions.'); return; }
       setQuestions(parsed);
-      alert(`Parsed ${parsed.length} cloze questions!`);
+      toast.success(`Parsed ${parsed.length} cloze questions!`);
       return;
     }
 
@@ -178,13 +179,13 @@ export default function CreateTest() {
       }
     }
 
-    if (parsed.length === 0) { alert('Could not parse any questions. Check format.'); return; }
+    if (parsed.length === 0) { toast.error('Could not parse any questions. Check format.'); return; }
     setQuestions(parsed);
-    alert(`Parsed ${parsed.length} reading questions!`);
+    toast.success(`Parsed ${parsed.length} reading questions!`);
   };
 
   const handleSubmit = async () => {
-    if (!title || !content) { alert('Please fill in title and content'); return; }
+    if (!title || !content) { toast.error('Please fill in title and content'); return; }
     setLoading(true);
     try {
       const res = await fetch('/api/exercises', {
@@ -192,9 +193,13 @@ export default function CreateTest() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, content, type, questions, vocabulary }),
       });
-      if (res.ok) { router.push('/'); router.refresh(); }
-      else { const e = await res.json(); alert('Error: ' + e.error); }
-    } catch { alert('Server error'); }
+      if (res.ok) { 
+        toast.success('Exercise created successfully!');
+        router.push('/'); 
+        router.refresh(); 
+      }
+      else { const e = await res.json(); toast.error('Error: ' + e.error); }
+    } catch { toast.error('Server error'); }
     finally { setLoading(false); }
   };
 
@@ -236,6 +241,7 @@ D. Tokyo`;
               {[
                 { value: 'reading', label: 'Reading', icon: BookOpen, desc: 'Passage + Q&A' },
                 { value: 'cloze', label: 'Cloze Test', icon: ListChecks, desc: 'Fill [1] blanks' },
+                { value: 'rewriting', label: 'Rewriting', icon: PenTool, desc: 'Text only' },
               ].map(({ value, label, icon: Icon, desc }) => (
                 <button
                   key={value}
@@ -282,6 +288,9 @@ D. Tokyo`;
               {type === 'cloze' && (
                 <span className="badge-teal">Use [1] [2] for blanks</span>
               )}
+              {type === 'rewriting' && (
+                <span className="badge-teal">Enter your sentence structures or formulas</span>
+              )}
             </div>
             <textarea
               required
@@ -294,36 +303,38 @@ D. Tokyo`;
           </div>
 
           {/* Bulk Questions Import */}
-          <div
-            className="p-5 rounded-xl mb-6"
-            style={{ background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.15)' }}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="w-4 h-4" style={{ color: 'var(--accent)' }} />
-              <span className="text-xs font-bold" style={{ color: 'var(--accent)' }}>
-                Bulk Questions Import
-              </span>
-            </div>
-            <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
-              {type === 'reading'
-                ? 'Paste questions with options. Use * before the correct answer letter.'
-                : 'Paste cloze answers. Each line: [n] | *A. text | B. text | C. text | D. text'}
-            </p>
-            <textarea
-              rows={8}
-              value={bulkText}
-              onChange={e => setBulkText(e.target.value)}
-              className="input-dark w-full px-4 py-3 text-xs leading-relaxed resize-none mb-3 font-mono"
-              placeholder={type === 'reading' ? readingPlaceholder : clozePlaceholder}
-            />
-            <button
-              type="button"
-              onClick={parseBulk}
-              className="btn-primary px-5 py-2.5 text-xs flex items-center gap-2"
+          {type !== 'rewriting' && (
+            <div
+              className="p-5 rounded-xl mb-6"
+              style={{ background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.15)' }}
             >
-              <Zap className="w-3.5 h-3.5" /> Parse & Import
-            </button>
-          </div>
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                <span className="text-xs font-bold" style={{ color: 'var(--accent)' }}>
+                  Bulk Questions Import
+                </span>
+              </div>
+              <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+                {type === 'reading'
+                  ? 'Paste questions with options. Use * before the correct answer letter.'
+                  : 'Paste cloze answers. Each line: [n] | *A. text | B. text | C. text | D. text'}
+              </p>
+              <textarea
+                rows={8}
+                value={bulkText}
+                onChange={e => setBulkText(e.target.value)}
+                className="input-dark w-full px-4 py-3 text-xs leading-relaxed resize-none mb-3 font-mono"
+                placeholder={type === 'reading' ? readingPlaceholder : clozePlaceholder}
+              />
+              <button
+                type="button"
+                onClick={parseBulk}
+                className="btn-primary px-5 py-2.5 text-xs flex items-center gap-2"
+              >
+                <Zap className="w-3.5 h-3.5" /> Parse & Import
+              </button>
+            </div>
+          )}
 
           {/* Vocabulary Section */}
           <div className="mt-10 mb-20">
@@ -461,7 +472,7 @@ D. Tokyo`;
               {/* Question text */}
               <input
                 type="text"
-                placeholder={type === 'cloze' ? 'Blank label (optional)' : 'Question text'}
+                placeholder={type === 'cloze' ? 'Blank label (optional)' : type === 'rewriting' ? 'Original sentence' : 'Question text'}
                 value={q.question_text}
                 onChange={e => updateQuestion(i, { question_text: e.target.value })}
                 className="input-dark w-full px-3 py-2 text-[11px] mb-3"
@@ -469,28 +480,33 @@ D. Tokyo`;
 
               {/* Options with content */}
               <div className="space-y-1.5 mb-3">
-                {['A', 'B', 'C', 'D'].map(label => (
+                {['A', 'B', 'C', 'D'].map((label, optIndex) => (
                   <div key={label} className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => updateQuestion(i, { correct_answer: label })}
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 transition-all"
-                      style={q.correct_answer === label ? {
-                        background: 'var(--accent)',
-                        color: '#0b0f19',
-                        boxShadow: '0 0 10px rgba(0,212,170,0.3)',
-                      } : {
-                        background: 'rgba(255,255,255,0.04)',
-                        color: 'var(--text-muted)',
-                        border: '1px solid var(--border)',
-                      }}
-                      title={q.correct_answer === label ? 'Correct answer' : 'Click to set as correct'}
-                    >
-                      {label}
-                    </button>
+                    {type !== 'rewriting' && (
+                      <button
+                        type="button"
+                        onClick={() => updateQuestion(i, { correct_answer: label })}
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 transition-all"
+                        style={q.correct_answer === label ? {
+                          background: 'var(--accent)',
+                          color: '#0b0f19',
+                          boxShadow: '0 0 10px rgba(0,212,170,0.3)',
+                        } : {
+                          background: 'rgba(255,255,255,0.04)',
+                          color: 'var(--text-muted)',
+                          border: '1px solid var(--border)',
+                        }}
+                        title={q.correct_answer === label ? 'Correct answer' : 'Click to set as correct'}
+                      >
+                        {label}
+                      </button>
+                    )}
+                    {type === 'rewriting' && (
+                      <span className="text-[10px] font-bold text-text-muted w-6 text-center">{optIndex + 1}.</span>
+                    )}
                     <input
                       type="text"
-                      placeholder={`Option ${label} content...`}
+                      placeholder={type === 'rewriting' ? 'Acceptable answer...' : `Option ${label} content...`}
                       value={q.options[label] || ''}
                       onChange={e => updateOption(i, label, e.target.value)}
                       className="input-dark flex-1 px-2 py-1.5 text-[11px]"

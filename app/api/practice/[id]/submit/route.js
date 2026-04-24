@@ -7,8 +7,11 @@ export async function POST(request, { params }) {
     const { id } = await params;
     const { answers } = await request.json();
 
+    const exResult = await db.execute({ sql: 'SELECT type FROM exercises WHERE id = ?', args: [id] });
+    const exerciseType = exResult.rows[0]?.type;
+
     const qResult = await db.execute({
-      sql: 'SELECT id, correct_answer FROM questions WHERE exercise_id = ?',
+      sql: 'SELECT id, correct_answer, options FROM questions WHERE exercise_id = ?',
       args: [id],
     });
 
@@ -24,13 +27,26 @@ export async function POST(request, { params }) {
 
     for (const q of questions) {
       const userAnswer = answers[q.id];
-      const isCorrect = userAnswer === q.correct_answer;
+      let isCorrect = false;
+      let returnedCorrectAnswer = q.correct_answer;
+
+      if (exerciseType === 'rewriting') {
+        isCorrect = true;
+        try {
+          const opts = JSON.parse(q.options);
+          const firstValid = Object.values(opts).find(val => val && String(val).trim() !== '');
+          returnedCorrectAnswer = firstValid || '';
+        } catch { returnedCorrectAnswer = ''; }
+      } else {
+        isCorrect = userAnswer === q.correct_answer;
+      }
+
       if (isCorrect) score += 1;
 
       resultDetails.push({
         question_id: Number(q.id),
         user_answer: userAnswer,
-        correct_answer: q.correct_answer,
+        correct_answer: returnedCorrectAnswer,
         isCorrect,
       });
     }

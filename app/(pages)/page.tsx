@@ -19,7 +19,7 @@ export default function Home() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'reading' | 'cloze'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'reading' | 'cloze' | 'rewriting'>('all');
 
   useEffect(() => {
     fetch('/api/exercises')
@@ -68,7 +68,7 @@ export default function Home() {
 
         {/* Type Tabs */}
         <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
-          {(['all', 'reading', 'cloze'] as const).map((type) => (
+          {(['all', 'reading', 'cloze', 'rewriting'] as const).map((type) => (
             <button
               key={type}
               onClick={() => setTypeFilter(type)}
@@ -140,9 +140,9 @@ export default function Home() {
               {/* Top row */}
               <div className="flex items-center justify-between mb-4">
                 <span
-                  className={ex.type === 'reading' ? 'badge-blue' : 'badge-teal'}
+                  className={ex.type === 'reading' ? 'badge-blue' : ex.type === 'rewriting' ? 'badge-purple' : 'badge-teal'}
                 >
-                  {ex.type === 'reading' ? 'Reading' : 'Cloze'}
+                  {ex.type === 'reading' ? 'Reading' : ex.type === 'rewriting' ? 'Rewriting' : 'Cloze'}
                 </span>
                 <div className="flex items-center gap-2">
                   <button

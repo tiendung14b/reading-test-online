@@ -4,6 +4,7 @@ import { useEffect, useState, Fragment, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Dialog, Listbox, Transition } from '@headlessui/react';
 import { BookOpen, CheckCircle, XCircle, X, ChevronLeft, ChevronDown, Check, GraduationCap, Edit3 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 type Question = {
   id: number;
@@ -104,8 +105,8 @@ export default function PracticePage() {
       });
       const data = await res.json();
       if (data.success) setResults({ score: data.score, total: data.total, details: data.details });
-      else alert(data.error);
-    } catch { alert('Submit failed'); }
+      else toast.error(data.error);
+    } catch { toast.error('Submit failed'); }
     finally { setSubmitting(false); }
   };
 
@@ -237,7 +238,7 @@ export default function PracticePage() {
     });
   };
 
-  const ContentPane = () => (
+  const renderContentPane = () => (
     <div
       className="leading-8 text-base whitespace-pre-wrap"
       style={{ color: 'var(--text-secondary)', fontFamily: "'Georgia', serif", lineHeight: '1.85' }}
@@ -255,14 +256,10 @@ export default function PracticePage() {
       className="flex h-full overflow-hidden"
       style={{ background: 'var(--bg-base)' }}
     >
-      {/* Left — Reading pane (desktop) */}
+      {/* Left — Reading/Content pane */}
       <div
         className="hidden md:flex flex-col overflow-hidden"
-        style={{
-          width: '55%',
-          borderRight: '1px solid var(--border)',
-          background: 'var(--bg-surface)',
-        }}
+        style={{ width: '55%', borderRight: '1px solid var(--border)', background: 'var(--bg-surface)' }}
       >
         {/* Pane header */}
         <div
@@ -278,7 +275,7 @@ export default function PracticePage() {
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: 'var(--accent)' }}>
-              {exercise.type === 'reading' ? 'Reading Passage' : 'Cloze Test'}
+              {exercise.type === 'reading' ? 'Reading Passage' : exercise.type === 'rewriting' ? 'Rewriting' : 'Cloze Test'}
             </p>
             <h1 className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
               {exercise.title}
@@ -304,7 +301,7 @@ export default function PracticePage() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-8 py-8">
-          <ContentPane />
+          {renderContentPane()}
         </div>
       </div>
 
@@ -369,7 +366,7 @@ export default function PracticePage() {
               className="md:hidden rounded-2xl p-5 mb-4"
               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', lineHeight: '1.8' }}
             >
-              <ContentPane />
+              {renderContentPane()}
             </div>
           )}
 
@@ -381,7 +378,7 @@ export default function PracticePage() {
               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', lineHeight: '1.8' }}
             >
               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>Reading Passage</p>
-              <ContentPane />
+              {renderContentPane()}
             </div>
           )}
 
@@ -389,7 +386,7 @@ export default function PracticePage() {
             const detail = results?.details.find(d => d.question_id === q.id);
             const isReading = exercise.type === 'reading';
 
-            if (!isReading && results) {
+            if (exercise.type === 'cloze' && results) {
               const userAns = detail?.user_answer || '—';
               const correctAns = detail?.correct_answer || '';
               const userOptText = q.options[userAns] || '';
@@ -471,7 +468,7 @@ export default function PracticePage() {
               );
             }
 
-            if (!isReading) return null;
+            if (exercise.type === 'cloze') return null;
 
             return (
               <div
@@ -497,8 +494,32 @@ export default function PracticePage() {
                   {q.question_text || `Question ${idx + 1}`}
                 </p>
 
-                {/* Options */}
-                <div className="space-y-2">
+                {/* Options / Text Input */}
+                {exercise.type === 'rewriting' ? (
+                  <div className="space-y-3">
+                    <textarea
+                      rows={3}
+                      placeholder="Type your answer here..."
+                      value={answers[q.id] || ''}
+                      onChange={e => handleSelectAnswer(q.id, e.target.value)}
+                      disabled={!!results}
+                      className="input-dark w-full px-4 py-3 text-sm leading-relaxed resize-none"
+                    />
+                    {results && detail && (
+                      <div className="p-4 rounded-xl mt-3" style={{ background: detail.isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)', border: `1px solid ${detail.isCorrect ? 'rgba(0,212,170,0.2)' : 'rgba(255,77,109,0.2)'}` }}>
+                         <p className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: detail.isCorrect ? '#00d4aa' : '#ff4d6d' }}>
+                           {detail.isCorrect ? 'Correct!' : 'Accepted Answers:'}
+                         </p>
+                         <ul className="text-sm space-y-1.5" style={{ color: 'var(--text-secondary)' }}>
+                           {Object.values(q.options).filter(Boolean).map((opt, i) => (
+                             <li key={i} className="flex gap-2"><span style={{ color: 'var(--accent)' }}>•</span> {opt}</li>
+                           ))}
+                         </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
                   {Object.entries(q.options).map(([label, text]) => {
                     const isSelected = answers[q.id] === label;
                     const isCorrectOpt = results && detail?.correct_answer === label;
@@ -567,6 +588,7 @@ export default function PracticePage() {
                     );
                   })}
                 </div>
+                )}
               </div>
             );
           })}
@@ -684,7 +706,7 @@ export default function PracticePage() {
                     </button>
                   </div>
                   <div className="overflow-y-auto px-5 py-5 flex-1">
-                    <ContentPane />
+                    {renderContentPane()}
                   </div>
                   <div className="px-5 py-4 shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
                     <button
