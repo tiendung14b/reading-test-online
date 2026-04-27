@@ -34,6 +34,7 @@ type ResultDetail = {
   user_answer: string;
   correct_answer: string;
   isCorrect: boolean;
+  correction?: string;
 };
 
 function cn(...classes: (string | boolean | undefined | null)[]) {
@@ -508,13 +509,22 @@ export default function PracticePage() {
                     {results && detail && (
                       <div className="p-4 rounded-xl mt-3" style={{ background: detail.isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)', border: `1px solid ${detail.isCorrect ? 'rgba(0,212,170,0.2)' : 'rgba(255,77,109,0.2)'}` }}>
                          <p className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: detail.isCorrect ? '#00d4aa' : '#ff4d6d' }}>
-                           {detail.isCorrect ? 'Correct!' : 'Accepted Answers:'}
+                           {detail.isCorrect ? 'Correct!' : (detail.correction ? 'Feedback & Correction:' : 'Accepted Answers:')}
                          </p>
-                         <ul className="text-sm space-y-1.5" style={{ color: 'var(--text-secondary)' }}>
-                           {Object.values(q.options).filter(Boolean).map((opt, i) => (
-                             <li key={i} className="flex gap-2"><span style={{ color: 'var(--accent)' }}>•</span> {opt}</li>
-                           ))}
-                         </ul>
+                         
+                         {detail.correction ? (
+                           <div 
+                             className="text-sm leading-relaxed ai-correction-content"
+                             style={{ color: 'var(--text-secondary)' }}
+                             dangerouslySetInnerHTML={{ __html: detail.correction }}
+                           />
+                         ) : (
+                           <ul className="text-sm space-y-1.5" style={{ color: 'var(--text-secondary)' }}>
+                             {Object.values(q.options).filter(Boolean).map((opt, i) => (
+                               <li key={i} className="flex gap-2"><span style={{ color: 'var(--accent)' }}>•</span> {opt}</li>
+                             ))}
+                           </ul>
+                         )}
                       </div>
                     )}
                   </div>

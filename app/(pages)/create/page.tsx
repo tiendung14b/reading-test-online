@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, ListChecks, Plus, Trash2, Save, Zap, FileText, PenTool } from 'lucide-react';
+import { BookOpen, ListChecks, Plus, Trash2, Save, Zap, FileText, PenTool, Sparkles, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment, useEffect } from 'react';
 
 type OptionMap = Record<string, string>; // { A: "text", B: "text", ... }
 
@@ -39,6 +41,22 @@ export default function CreateTest() {
   const [vocabulary, setVocabulary] = useState<VocabularyEntry[]>([]);
   const [bulkText, setBulkText] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // AI Modal States
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiDifficulty, setAiDifficulty] = useState('B1');
+  const [aiNumQuestions, setAiNumQuestions] = useState(5);
+  const [aiExerciseType, setAiExerciseType] = useState('Multiple Choice / Reading Comprehension');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [hasTokens, setHasTokens] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/tokens/status')
+      .then(res => res.json())
+      .then(data => setHasTokens(!!data.hasTokens))
+      .catch(() => setHasTokens(false));
+  }, []);
 
   const handleAddQuestion = () => setQuestions([...questions, makeQuestion()]);
 
@@ -203,6 +221,46 @@ export default function CreateTest() {
     finally { setLoading(false); }
   };
 
+  const handleAiGenerate = async () => {
+    if (!aiTopic.trim()) { toast.error('Vui lòng nhập chủ đề'); return; }
+    if (!aiExerciseType.trim()) { toast.error('Vui lòng nhập dạng bài tập'); return; }
+
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: aiTopic,
+          difficulty: aiDifficulty,
+          exerciseType: aiExerciseType,
+          numberOfQuestions: aiNumQuestions
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.data) {
+        const generated = data.data;
+        if (generated.title) setTitle(generated.title);
+        if (generated.content) setContent(generated.content);
+        if (generated.questions && Array.isArray(generated.questions)) {
+          const newQs = generated.questions.map((q: any) => {
+            const opts = q.options || { A: '', B: '', C: '', D: '' };
+            return makeQuestion(q.question_text || q.question || '', opts, q.correct_answer || 'A');
+          });
+          setQuestions(newQs);
+        }
+        toast.success('Generated successfully!');
+        setIsAiModalOpen(false);
+      } else {
+        toast.error(data.error || 'Failed to generate');
+      }
+    } catch (err) {
+      toast.error('Network error while generating');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const readingPlaceholder = `1. What is the main topic of the passage?
 *A. The benefits of artificial intelligence.
 B. The history of computer science.
@@ -225,12 +283,27 @@ D. Tokyo`;
       {/* Left — Form */}
       <div className="flex-1 overflow-y-auto p-6 lg:p-10">
         <div className="max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>
-            Create
-          </p>
-          <h1 className="text-2xl font-bold mb-8" style={{ color: 'var(--text-primary)' }}>
-            New Exercise
-          </h1>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>Create</p>
+              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>New Exercise</h1>
+            </div>
+            <button
+              onClick={() => {
+                if (!hasTokens) {
+                  toast.error('Không còn Token AI nào khả dụng. Vui lòng thêm Token trong Cài đặt.');
+                  router.push('/tokens');
+                  return;
+                }
+                setIsAiModalOpen(true);
+              }}
+              className={`btn-primary px-4 py-2 text-sm flex items-center gap-2 rounded-xl shadow-lg transition-transform hover:scale-105 ${!hasTokens ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+              style={{ background: 'linear-gradient(135deg, var(--accent) 0%, #00b894 100%)', color: '#0b0f19', border: 'none' }}
+              title={!hasTokens ? "Hết lượt dùng AI. Bấm để nạp thêm." : "Tạo tự động bằng AI"}
+            >
+              <Sparkles className="w-4 h-4" /> {hasTokens ? 'Tạo bằng AI' : 'Hết lượt AI'}
+            </button>
+          </div>
 
           {/* Type selector */}
           <div className="mb-6">
@@ -534,6 +607,123 @@ D. Tokyo`;
           </button>
         </div>
       </div>
+
+      {/* AI Generate Modal */}
+      <Transition appear show={isAiModalOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => !aiLoading && setIsAiModalOpen(false)}>
+          <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95 translate-y-4" enterTo="opacity-100 scale-100 translate-y-0" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100 translate-y-0" leaveTo="opacity-0 scale-95 translate-y-4">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-3xl bg-bg-surface border border-border p-6 text-left align-middle shadow-2xl transition-all relative">
+                  {/* Decorative Header */}
+                  <div className="absolute top-0 left-0 right-0 h-32 opacity-20 pointer-events-none" style={{ background: 'linear-gradient(180deg, var(--accent) 0%, transparent 100%)', filter: 'blur(40px)' }} />
+                  
+                  <div className="flex items-center justify-between mb-6 relative">
+                    <Dialog.Title as="h3" className="text-lg font-bold flex items-center gap-2 text-text-primary">
+                      <Sparkles className="w-5 h-5 text-accent" /> Tạo câu hỏi AI
+                    </Dialog.Title>
+                    <button onClick={() => !aiLoading && setIsAiModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-text-muted">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-5 relative">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-2 block">Chủ đề (Topic)</label>
+                      <input
+                        type="text"
+                        value={aiTopic}
+                        onChange={e => setAiTopic(e.target.value)}
+                        className="input-dark w-full px-4 py-3 text-sm rounded-xl focus:border-accent/50 focus:bg-accent/5 transition-all"
+                        placeholder="VD: Global Warming, The History of Internet..."
+                        disabled={aiLoading}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-2 block">Độ khó</label>
+                        <select
+                          value={aiDifficulty}
+                          onChange={e => setAiDifficulty(e.target.value)}
+                          className="input-dark w-full px-4 py-3 text-sm rounded-xl appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M6%209L12%2015L18%209%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_12px_center]"
+                          disabled={aiLoading}
+                        >
+                          <option value="A1">A1 (Beginner)</option>
+                          <option value="A2">A2 (Elementary)</option>
+                          <option value="B1">B1 (Intermediate)</option>
+                          <option value="B2">B2 (Upper Intermediate)</option>
+                          <option value="C1">C1 (Advanced)</option>
+                          <option value="C2">C2 (Proficient)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-2 block">Số lượng</label>
+                        <select
+                          value={aiNumQuestions}
+                          onChange={e => setAiNumQuestions(Number(e.target.value))}
+                          className="input-dark w-full px-4 py-3 text-sm rounded-xl appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M6%209L12%2015L18%209%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_12px_center]"
+                          disabled={aiLoading}
+                        >
+                          <option value={5}>5 câu</option>
+                          <option value={10}>10 câu</option>
+                          <option value={15}>15 câu</option>
+                          <option value={20}>20 câu</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-2 block">Dạng bài tập</label>
+                      <input
+                        type="text"
+                        value={aiExerciseType}
+                        onChange={e => setAiExerciseType(e.target.value)}
+                        className="input-dark w-full px-4 py-3 text-sm rounded-xl focus:border-accent/50 focus:bg-accent/5 transition-all"
+                        placeholder="VD: Trắc nghiệm đọc hiểu, Viết lại câu, Điền từ vào đoạn văn..."
+                        disabled={aiLoading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-8 pt-6 flex gap-3 relative" style={{ borderTop: '1px solid var(--border)' }}>
+                    <button
+                      type="button"
+                      className="flex-1 py-3 px-4 rounded-xl text-sm font-semibold text-text-secondary hover:bg-white/5 hover:text-text-primary transition-colors disabled:opacity-50"
+                      onClick={() => setIsAiModalOpen(false)}
+                      disabled={aiLoading}
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-[2] py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-accent/20 hover:shadow-accent/40 disabled:opacity-50 disabled:shadow-none"
+                      style={{ background: 'var(--accent)', color: '#0b0f19' }}
+                      onClick={handleAiGenerate}
+                      disabled={aiLoading}
+                    >
+                      {aiLoading ? (
+                        <>
+                          <Sparkles className="w-4 h-4 ai-spin-dance" />
+                          Đang phân tích & tạo...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" /> Bắt đầu tạo
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }

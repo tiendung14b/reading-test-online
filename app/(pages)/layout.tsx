@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History } from 'lucide-react';
+import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function PagesLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +30,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/history', icon: History, label: 'History' },
+    { href: '/lessons', icon: Library, label: 'Lessons' },
     { href: '/create', icon: PlusCircle, label: 'Create' },
   ];
 
@@ -115,10 +116,10 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
             <HelpCircle className="w-5 h-5 shrink-0" />
             {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Help Center</span>}
           </button>
-          <button className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-white/5 hover:text-text-secondary transition-all group">
+          <Link href="/tokens" className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-white/5 hover:text-text-secondary transition-all group">
             <Settings className="w-5 h-5 shrink-0" />
-            {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Settings</span>}
-          </button>
+            {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Settings & API Keys</span>}
+          </Link>
           
           {/* User Profile */}
           <div className={`mt-2 flex items-center gap-3 p-2 rounded-xl bg-white/5 ${!isOpen && !isMobile ? 'justify-center' : ''}`}>

@@ -13,6 +13,7 @@ export async function GET(request, { params }) {
           r.id as result_id,
           r.score,
           r.user_answers,
+          r.ai_evaluation,
           r.completed_at,
           e.id as exercise_id,
           e.title,
@@ -40,6 +41,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({
       ...result,
       user_answers: JSON.parse(result.user_answers),
+      ai_evaluation: result.ai_evaluation ? JSON.parse(result.ai_evaluation) : null,
       questions: qResult.rows.map(q => ({
         ...q,
         options: JSON.parse(q.options)

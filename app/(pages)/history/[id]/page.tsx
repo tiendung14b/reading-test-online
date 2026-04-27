@@ -17,6 +17,13 @@ type HistoryDetail = {
   result_id: number;
   score: number;
   user_answers: Record<number, string>;
+  ai_evaluation?: Array<{
+    question_id: number;
+    user_answer: string;
+    correct_answer: string;
+    isCorrect: boolean;
+    correction: string | null;
+  }> | null;
   completed_at: string;
   exercise_id: number;
   title: string;
@@ -162,6 +169,9 @@ export default function HistoryDetailPage() {
           {data.questions.map((q, idx) => {
             const userAns = data.user_answers[q.id];
             const isCorrect = userAns === q.correct_answer;
+            const aiEval = data.ai_evaluation?.find(e => e.question_id === q.id);
+            const aiCorrection = aiEval?.correction;
+
             return (
               <div key={q.id} className="rounded-2xl p-5 card-glass" style={{ border: `1px solid ${isCorrect ? 'rgba(0,212,170,0.2)' : 'rgba(255,77,109,0.2)'}` }}>
                 <div className="flex items-center justify-between mb-3">
@@ -193,6 +203,12 @@ export default function HistoryDetailPage() {
                            <li key={i} className="flex gap-2"><span style={{ color: 'var(--accent)' }}>•</span> {opt}</li>
                          ))}
                        </ul>
+                       {aiCorrection && (
+                         <div className="mt-3 p-3 rounded-lg border border-white/10" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                           <p className="text-[11px] font-bold uppercase tracking-widest text-accent mb-1.5">AI Feedback & Explanation</p>
+                           <div className="text-sm text-text-secondary leading-relaxed ai-feedback-content" dangerouslySetInnerHTML={{ __html: aiCorrection }} />
+                         </div>
+                       )}
                     </div>
                   </div>
                 ) : (
