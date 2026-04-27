@@ -335,7 +335,15 @@ export default function PracticePage() {
           className="flex items-center justify-between px-6 py-4 shrink-0"
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}
         >
-          <div>
+          <div className="flex-1 min-w-0">
+            {/* Mobile Title */}
+            <div className="md:hidden flex flex-col mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: 'var(--accent)' }}>
+                {exercise.type === 'reading' ? 'Reading Passage' : exercise.type === 'rewriting' ? 'Rewriting' : 'Cloze Test'}
+              </p>
+              <h1 className="text-sm font-bold text-text-primary truncate">{exercise.title}</h1>
+            </div>
+
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               Questions
               <span className="ml-2 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>

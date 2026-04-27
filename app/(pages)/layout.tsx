@@ -91,6 +91,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
                 key={href}
                 href={href}
                 title={label}
+                onClick={() => { if (isMobile) setIsOpen(false); }}
                 className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${
                   isActive ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-white/5 hover:text-text-secondary'
                 }`}
@@ -116,7 +117,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
             <HelpCircle className="w-5 h-5 shrink-0" />
             {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Help Center</span>}
           </button>
-          <Link href="/tokens" className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-white/5 hover:text-text-secondary transition-all group">
+          <Link href="/tokens" onClick={() => { if (isMobile) setIsOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-white/5 hover:text-text-secondary transition-all group">
             <Settings className="w-5 h-5 shrink-0" />
             {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Settings & API Keys</span>}
           </Link>
