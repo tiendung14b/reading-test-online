@@ -3,13 +3,13 @@ import { AIService } from '@/lib/gemini';
 
 export async function POST(request) {
   try {
-    const { topic, difficulty, exerciseType, numberOfQuestions } = await request.json();
+    const { topic, difficulty, exerciseType, numberOfQuestions, description } = await request.json();
 
     if (!topic || !difficulty || !exerciseType || !numberOfQuestions) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const aiResult = await AIService.generateExercises(topic, difficulty, exerciseType, numberOfQuestions);
+    const aiResult = await AIService.generateExercises(topic, difficulty, exerciseType, numberOfQuestions, description);
 
     return NextResponse.json({ success: true, data: aiResult });
   } catch (error) {

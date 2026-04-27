@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library } from 'lucide-react';
+import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function PagesLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +31,8 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
     { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/history', icon: History, label: 'History' },
     { href: '/lessons', icon: Library, label: 'Lessons' },
-    { href: '/create', icon: PlusCircle, label: 'Create' },
+    { href: '/ai-create', icon: Sparkles, label: 'AI Generator' },
+    { href: '/create', icon: PlusCircle, label: 'Create Manual' },
   ];
 
   const sidebarWidth = isMobile 

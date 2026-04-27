@@ -107,19 +107,23 @@ Trả về kết quả là một mảng các đối tượng khớp với thứ 
 
   /**
    * Tạo ra các dạng bài tập mới
+  /**
+   * Tạo ra các dạng bài tập mới
    * @param topic Chủ đề của bài tập (ví dụ: Môi trường, Lịch sử, Công nghệ...)
    * @param difficulty Mức độ khó (ví dụ: Cơ bản, Nâng cao, B1, IELTS 6.0...)
    * @param exerciseType Dạng bài tập (ví dụ: Trắc nghiệm, Điền từ, Đọc hiểu...)
    * @param numberOfQuestions Số lượng câu hỏi muốn tạo
+   * @param description Mô tả chi tiết yêu cầu
    * @returns JSON chứa nội dung bài tập và đáp án
    */
-  async generateExercises(topic: string, difficulty: string, exerciseType: string, numberOfQuestions: number = 5) {
+  async generateExercises(topic: string, difficulty: string, exerciseType: string, numberOfQuestions: number = 5, description: string = '') {
     const prompt = `
 Bạn là một chuyên gia ra đề thi tiếng Anh. Hãy tạo một bộ bài tập với các yêu cầu cụ thể sau:
 - Chủ đề (Topic): ${topic}
 - Mức độ khó (Difficulty): ${difficulty}
 - Dạng bài tập (Type): ${exerciseType}
 - Số lượng câu hỏi: ${numberOfQuestions} câu
+${description ? `- Yêu cầu bổ sung: ${description}` : ''}
 
 Yêu cầu:
 - Tự động sinh ra một đoạn văn bản (Passage) làm nội dung chính của bài tập. Nếu là bài đọc hiểu, viết một đoạn văn. Nếu là cloze test, viết đoạn văn và đục lỗ [1], [2]... Nếu là rewriting, có thể để trống hoặc viết một vài dòng hướng dẫn.
@@ -128,7 +132,7 @@ Yêu cầu:
 
 Hãy trả về định dạng JSON CHÍNH XÁC cấu trúc sau (không có markdown code block, chỉ có JSON thô):
 {
-  "title": "<Tiêu đề bài tập ngắn gọn>",
+  "title": "${topic}",
   "content": "<Nội dung đoạn văn / bài đọc (nếu có)>",
   "questions": [
     {
