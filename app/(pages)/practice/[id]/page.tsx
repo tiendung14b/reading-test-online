@@ -3,7 +3,7 @@
 import { useEffect, useState, Fragment, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Dialog, Listbox, Transition } from '@headlessui/react';
-import { BookOpen, CheckCircle, XCircle, X, ChevronLeft, ChevronDown, Check, GraduationCap, Edit3 } from 'lucide-react';
+import { BookOpen, CheckCircle, XCircle, X, ChevronLeft, ChevronDown, Check, GraduationCap, Edit3, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type Question = {
@@ -254,9 +254,31 @@ export default function PracticePage() {
 
   return (
     <div
-      className="flex h-full overflow-hidden"
+      className="flex h-full overflow-hidden relative"
       style={{ background: 'var(--bg-base)' }}
     >
+      {/* AI Grading Loading Overlay */}
+      <Transition
+        show={submitting}
+        as={Fragment}
+        enter="ease-out duration-300"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="ease-in duration-200"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+      >
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md">
+          <div className="relative mb-8">
+            <Sparkles className="w-16 h-16 text-accent ai-spin-dance" />
+            <div className="absolute inset-0 blur-2xl bg-accent/20 rounded-full animate-pulse" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">AI is grading your answers...</h2>
+          <p className="text-text-muted text-sm px-8 text-center max-w-md">
+            Analyzing your context, grammar, and nuances to provide the most accurate feedback.
+          </p>
+        </div>
+      </Transition>
       {/* Left — Reading/Content pane */}
       <div
         className="hidden md:flex flex-col overflow-hidden"
