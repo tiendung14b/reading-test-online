@@ -32,7 +32,7 @@ export default function TokensPage() {
     fetchTokens();
   }, []);
 
-  const handleAddToken = async (e) => {
+  const handleAddToken = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newToken.trim()) return toast.error('Vui lòng nhập API Key');
 
@@ -59,7 +59,7 @@ export default function TokensPage() {
     }
   };
 
-  const handleDeleteToken = async (id) => {
+  const handleDeleteToken = async (id: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa token này?')) return;
     try {
       const res = await fetch(`/api/tokens?id=${id}`, { method: 'DELETE' });
