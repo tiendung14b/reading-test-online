@@ -132,11 +132,11 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
                 color: '#fff',
               }}
             >
-              DF
+              <img src="https://i.pinimg.com/736x/57/fb/38/57fb388bf33d55c48684c2506f22a758.jpg" alt="avatar" className="w-9 h-9 rounded-full" />
             </div>
             {(isOpen || isMobile) && (
               <div className="flex flex-col overflow-hidden">
-                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>Dung Phan</span>
+                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>Tien Dung</span>
                 <span className="text-[10px] text-text-muted uppercase tracking-wider">Pro Plan</span>
               </div>
             )}

@@ -199,7 +199,7 @@ export default function HistoryDetailPage() {
                          {isCorrect ? 'Correct!' : 'Accepted Answers:'}
                        </p>
                        <ul className="text-sm space-y-1.5" style={{ color: 'var(--text-secondary)' }}>
-                         {Object.values(q.options).filter(Boolean).map((opt, i) => (
+                         {q.options && Object?.values(q.options).filter(Boolean).map((opt, i) => (
                            <li key={i} className="flex gap-2"><span style={{ color: 'var(--accent)' }}>•</span> {opt}</li>
                          ))}
                        </ul>
