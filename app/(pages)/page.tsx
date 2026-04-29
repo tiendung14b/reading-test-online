@@ -20,20 +20,61 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'reading' | 'cloze' | 'rewriting'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 9;
 
   useEffect(() => {
-    fetch('/api/exercises')
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: currentPage.toString(),
+      limit: itemsPerPage.toString(),
+      search: searchQuery,
+      type: typeFilter
+    });
+
+    fetch(`/api/exercises?${params.toString()}`)
       .then(res => res.json())
-      .then(data => { setExercises(Array.isArray(data) ? data : []); setLoading(false); });
-  }, []);
+      .then(data => {
+        if (data && data.items) {
+          setExercises(data.items);
+          setTotalPages(data.pagination.totalPages);
+          setTotalItems(data.pagination.totalItems);
+        } else {
+          setExercises([]);
+          setTotalPages(1);
+          setTotalItems(0);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [currentPage, searchQuery, typeFilter]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, typeFilter]);
 
-
-  const filteredExercises = exercises.filter(ex => {
-    const matchesSearch = ex.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === 'all' || ex.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(totalPages, currentPage + 2);
+      if (currentPage <= 3) {
+        end = maxVisible;
+      } else if (currentPage >= totalPages - 2) {
+        start = totalPages - maxVisible + 1;
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -90,7 +131,7 @@ export default function Home() {
           {typeFilter === 'all' ? 'All Exercises' : `${typeFilter} Exercises`}
           {searchQuery && <span className="ml-2 font-normal lowercase">matching "{searchQuery}"</span>}
           <span className="ml-2 text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-text-secondary">
-            {filteredExercises.length}
+            {totalItems}
           </span>
         </h2>
       </div>
@@ -106,7 +147,7 @@ export default function Home() {
       )}
 
       {/* Empty */}
-      {!loading && exercises.length === 0 && (
+      {!loading && totalItems === 0 && !searchQuery && typeFilter === 'all' && (
         <div
           className="card-glass rounded-2xl flex flex-col items-center justify-center py-20 text-center"
         >
@@ -129,9 +170,9 @@ export default function Home() {
       )}
 
       {/* Exercise Grid */}
-      {!loading && filteredExercises.length > 0 && (
+      {!loading && exercises.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredExercises.map((ex) => (
+          {exercises.map((ex) => (
             <div
               key={ex.id}
               onClick={() => router.push(`/practice/${ex.id}`)}
@@ -197,7 +238,7 @@ export default function Home() {
       )}
 
       {/* No results from filter */}
-      {!loading && exercises.length > 0 && filteredExercises.length === 0 && (
+      {!loading && totalItems === 0 && (searchQuery || typeFilter !== 'all') && (
         <div className="card-glass rounded-2xl flex flex-col items-center justify-center py-20 text-center">
           <Search className="w-12 h-12 text-text-muted mb-4 opacity-20" />
           <h3 className="text-lg font-semibold mb-2 text-text-primary">No results found</h3>
@@ -210,6 +251,49 @@ export default function Home() {
           >
             Clear all filters
           </button>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-10 px-2">
+          <p className="text-xs text-text-muted">
+            Showing <span className="text-text-secondary font-semibold">{Math.min(totalItems, (currentPage - 1) * itemsPerPage + 1)}</span> to <span className="text-text-secondary font-semibold">{Math.min(totalItems, currentPage * itemsPerPage)}</span> of <span className="text-text-secondary font-semibold">{totalItems}</span> exercises
+          </p>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed border border-white/5 disabled:hover:bg-white/5"
+            >
+              Prev
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all border border-white/5 ${
+                    currentPage === page
+                      ? 'bg-accent text-[#0b0f19] shadow-lg shadow-accent/20'
+                      : 'bg-white/5 text-text-muted hover:text-text-primary hover:bg-white/10'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed border border-white/5 disabled:hover:bg-white/5"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -16,19 +16,62 @@ type HistoryItem = {
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [overallStats, setOverallStats] = useState({
+    totalAttempts: 0,
+    exercisesDone: 0,
+    averageScore: 0,
+    highestScore: 0,
+  });
+  const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('/api/history')
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: currentPage.toString(),
+      limit: itemsPerPage.toString(),
+    });
+
+    fetch(`/api/history?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setHistory(Array.isArray(data) ? data : []);
+        if (data && data.items) {
+          setHistory(data.items);
+          setOverallStats(data.stats);
+          setTotalPages(data.pagination.totalPages);
+          setTotalItems(data.pagination.totalItems);
+        } else {
+          setHistory([]);
+          setTotalPages(1);
+          setTotalItems(0);
+        }
         setLoading(false);
       })
       .catch(err => {
         console.error(err);
         setLoading(false);
       });
-  }, []);
+  }, [currentPage]);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(totalPages, currentPage + 2);
+      if (currentPage <= 3) {
+        end = maxVisible;
+      } else if (currentPage >= totalPages - 2) {
+        start = totalPages - maxVisible + 1;
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'var(--accent)';
@@ -37,10 +80,10 @@ export default function HistoryPage() {
   };
 
   const stats = [
-    { label: 'Total Attempts', value: history.length, icon: HistoryIcon, color: '#00d4aa' },
-    { label: 'Exercises Done', value: new Set(history.map(h => h.exercise_id)).size, icon: BookOpen, color: '#60a5fa' },
-    { label: 'Average Score', value: history.length > 0 ? Math.round(history.reduce((a, b) => a + b.score, 0) / history.length) + '%' : '0%', icon: Target, color: '#f59e0b' },
-    { label: 'Highest Score', value: history.length > 0 ? Math.max(...history.map(h => h.score)) + '%' : '0%', icon: Award, color: '#a78bfa' },
+    { label: 'Total Attempts', value: overallStats.totalAttempts, icon: HistoryIcon, color: '#00d4aa' },
+    { label: 'Exercises Done', value: overallStats.exercisesDone, icon: BookOpen, color: '#60a5fa' },
+    { label: 'Average Score', value: overallStats.totalAttempts > 0 ? overallStats.averageScore + '%' : '0%', icon: Target, color: '#f59e0b' },
+    { label: 'Highest Score', value: overallStats.totalAttempts > 0 ? overallStats.highestScore + '%' : '0%', icon: Award, color: '#a78bfa' },
   ];
 
   return (
@@ -93,7 +136,7 @@ export default function HistoryPage() {
       )}
 
       {/* Empty */}
-      {!loading && history.length === 0 && (
+      {!loading && totalItems === 0 && (
         <div className="card-glass rounded-2xl flex flex-col items-center justify-center py-20 text-center">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
@@ -169,6 +212,49 @@ export default function HistoryPage() {
               </Link>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-10 px-2">
+          <p className="text-xs text-text-muted">
+            Showing <span className="text-text-secondary font-semibold">{Math.min(totalItems, (currentPage - 1) * itemsPerPage + 1)}</span> to <span className="text-text-secondary font-semibold">{Math.min(totalItems, currentPage * itemsPerPage)}</span> of <span className="text-text-secondary font-semibold">{totalItems}</span> attempts
+          </p>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed border border-white/5 disabled:hover:bg-white/5"
+            >
+              Prev
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all border border-white/5 ${
+                    currentPage === page
+                      ? 'bg-accent text-[#0b0f19] shadow-lg shadow-accent/20'
+                      : 'bg-white/5 text-text-muted hover:text-text-primary hover:bg-white/10'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed border border-white/5 disabled:hover:bg-white/5"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>
