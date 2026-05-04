@@ -12,6 +12,44 @@ export type ChatMessage = {
   fullText?: string;
 };
 
+const MarkdownText = ({ content }: { content: string }) => {
+  if (!content) return null;
+  
+  // Split by bold (**text**), inline code (`text`), and list items (\n- text)
+  const parts = content.split(/(\*\*.*?\*\*|`.*?`|\n- .*)/g);
+  
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i} className="font-bold" style={{ color: 'var(--accent)' }}>{part.slice(2, -2)}</strong>;
+        }
+        
+        if (part.startsWith('`') && part.endsWith('`')) {
+          return (
+            <code key={i} className="px-1.5 py-0.5 rounded font-mono text-[12px]" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--accent)' }}>
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+        
+        if (part.startsWith('\n- ')) {
+          return (
+            <div key={i} className="pl-4 my-1 flex gap-2">
+              <span style={{ color: 'var(--accent)' }}>•</span>
+              <span>{part.slice(3)}</span>
+            </div>
+          );
+        }
+        
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+};
+
 interface AIChatModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -198,10 +236,10 @@ export default function AIChatModal({
                   <div className="flex h-full flex-col shadow-2xl" style={{ background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', height: '100dvh' }}>
                     
                     {/* Header */}
-                    <div className="px-5 py-4 flex flex-col shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                    <div className="px-5 py-4 flex flex-col shrink-0 animate-in fade-in slide-in-from-top-4 duration-500" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,212,170,0.15)', color: '#00d4aa' }}>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center animate-bounce-subtle" style={{ background: 'rgba(0,212,170,0.15)', color: '#00d4aa' }}>
                             <Sparkles className="w-4 h-4" />
                           </div>
                           <div>
@@ -225,7 +263,7 @@ export default function AIChatModal({
 
                       {/* Selected Question Context Display */}
                       {questionText && (
-                        <div className="rounded-xl border overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border)' }}>
+                        <div className="rounded-xl border overflow-hidden animate-in fade-in zoom-in-95 duration-500 delay-150 fill-mode-both" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border)' }}>
                           <button 
                             onClick={() => setIsContextExpanded(!isContextExpanded)}
                             className="w-full p-3 flex items-center justify-between hover:bg-white/5 transition-colors text-left"
@@ -267,16 +305,16 @@ export default function AIChatModal({
                       {messages.map((msg) => {
                         const isAi = msg.role === 'ai';
                         return (
-                          <div key={msg.id} className={`flex gap-3 ${isAi ? '' : 'flex-row-reverse'}`}>
+                          <div key={msg.id} className={`flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 ${isAi ? '' : 'flex-row-reverse'}`}>
                             <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1" style={{ background: isAi ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.05)', color: isAi ? '#00d4aa' : 'var(--text-secondary)' }}>
                               {isAi ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
                             </div>
-                            <div className={`max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed whitespace-pre-wrap ${isAi ? 'rounded-tl-sm' : 'rounded-tr-sm'}`} style={{ 
+                            <div className={`max-w-[85%] rounded-2xl p-4 text-[13px] leading-relaxed whitespace-pre-wrap shadow-sm ${isAi ? 'rounded-tl-sm' : 'rounded-tr-sm'}`} style={{ 
                               background: isAi ? 'var(--bg-card)' : 'var(--accent)',
                               color: isAi ? 'var(--text-primary)' : '#0b0f19',
                               border: isAi ? '1px solid var(--border)' : 'none'
                             }}>
-                              {msg.text}
+                              <MarkdownText content={msg.text} />
                               {msg.isTyping && <span className="ml-1 inline-block w-1.5 h-3 bg-accent animate-pulse" />}
                             </div>
                           </div>

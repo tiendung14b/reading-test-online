@@ -186,6 +186,11 @@ Hãy trả về định dạng JSON CHÍNH XÁC cấu trúc sau (không có mark
     const systemPrompt = `Bạn là một gia sư tiếng Anh thân thiện, nhiệt tình và chuyên nghiệp. Học sinh đang hỏi bạn về bài tập họ vừa làm.
 Hãy trả lời ngắn gọn, dễ hiểu, tập trung trực tiếp vào câu hỏi. Khuyến khích người học.
 
+Sử dụng định dạng Markdown để làm nổi bật nội dung:
+- Dùng **chữ đậm** cho các từ vựng quan trọng hoặc điểm ngữ pháp cần lưu ý.
+- Dùng \`mã cố định\` cho các ví dụ câu hoặc cấu trúc cụ thể.
+- Có thể dùng danh sách (bullet points) nếu cần giải thích nhiều ý.
+
 Dưới đây là chi tiết bài tập (Nội dung, Câu hỏi, Đáp án của học sinh, Đáp án đúng):
 ====================
 ${exerciseContext}
