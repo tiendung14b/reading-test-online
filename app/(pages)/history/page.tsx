@@ -3,6 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Trophy, Clock, ArrowRight, History as HistoryIcon, Calendar, FileText, BookOpen, Target, Award } from 'lucide-react';
+import Loading from '@/components/ui/Loading';
+import Badge from '@/components/ui/Badge';
+import Pagination from '@/components/ui/Pagination';
+import EmptyState from '@/components/ui/EmptyState';
+import StatsCard from '@/components/ui/StatsCard';
+import ScoreBadge from '@/components/ui/ScoreBadge';
 
 type HistoryItem = {
   id: number;
@@ -55,29 +61,7 @@ export default function HistoryPage() {
       });
   }, [currentPage]);
 
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisible = 5;
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      let start = Math.max(1, currentPage - 2);
-      let end = Math.min(totalPages, currentPage + 2);
-      if (currentPage <= 3) {
-        end = maxVisible;
-      } else if (currentPage >= totalPages - 2) {
-        start = totalPages - maxVisible + 1;
-      }
-      for (let i = start; i <= end; i++) pages.push(i);
-    }
-    return pages;
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'var(--accent)';
-    if (score >= 50) return 'var(--warning)';
-    return 'var(--danger)';
-  };
+  // Removed getPageNumbers and getScoreColor as they are now in shared components
 
   const stats = [
     { label: 'Total Attempts', value: overallStats.totalAttempts, icon: HistoryIcon, color: '#00d4aa' },
@@ -103,57 +87,32 @@ export default function HistoryPage() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((stat) => (
-          <div
+          <StatsCard
             key={stat.label}
-            className="card-glass rounded-2xl p-5 transition-all hover:border-strong"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: `${stat.color}18` }}
-              >
-                <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-              </div>
-              <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                {loading ? '—' : stat.value}
-              </span>
-            </div>
-            <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              {stat.label}
-            </p>
-          </div>
+            label={stat.label}
+            value={stat.value}
+            icon={stat.icon}
+            color={stat.color}
+            loading={loading}
+          />
         ))}
       </div>
 
       {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center h-60">
-          <div
-            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
-          />
-        </div>
-      )}
+      {loading && <Loading />}
 
       {/* Empty */}
       {!loading && totalItems === 0 && (
-        <div className="card-glass rounded-2xl flex flex-col items-center justify-center py-20 text-center">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-            style={{ background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.2)' }}
-          >
-            <HistoryIcon className="w-8 h-8" style={{ color: 'var(--accent)' }} />
-          </div>
-          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-            No history yet
-          </h3>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-            Complete your first exercise to see your history here.
-          </p>
-          <Link href="/" className="btn-primary px-5 py-2.5 text-sm">
-            Go to Dashboard
-          </Link>
-        </div>
+        <EmptyState
+          icon={HistoryIcon}
+          title="No history yet"
+          description="Complete your first exercise to see your history here."
+          action={
+            <Link href="/" className="btn-primary px-5 py-2.5 text-sm">
+              Go to Dashboard
+            </Link>
+          }
+        />
       )}
 
       {/* History Table/List */}
@@ -175,9 +134,9 @@ export default function HistoryPage() {
               {/* Title and Date */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={item.type === 'reading' ? 'badge-blue' : 'badge-teal'}>
+                  <Badge type={item.type as any}>
                     {item.type === 'reading' ? 'Reading' : 'Cloze'}
-                  </span>
+                  </Badge>
                   <span className="text-xs text-text-muted flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     {new Date(item.completed_at).toLocaleDateString(undefined, { 
@@ -192,16 +151,7 @@ export default function HistoryPage() {
               </div>
 
               {/* Score */}
-              <div className="flex items-center gap-4 px-4 py-2 rounded-xl bg-white/5 shrink-0">
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Score</span>
-                  <span className="text-xl font-bold" style={{ color: getScoreColor(item.score) }}>
-                    {item.score}%
-                  </span>
-                </div>
-                <div className="h-8 w-px bg-white/10" />
-                <Trophy className="w-5 h-5" style={{ color: item.score >= 80 ? '#f59e0b' : 'var(--text-muted)' }} />
-              </div>
+              <ScoreBadge score={item.score} showIcon />
 
               {/* Action */}
               <Link
@@ -216,47 +166,14 @@ export default function HistoryPage() {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-10 px-2">
-          <p className="text-xs text-text-muted">
-            Showing <span className="text-text-secondary font-semibold">{Math.min(totalItems, (currentPage - 1) * itemsPerPage + 1)}</span> to <span className="text-text-secondary font-semibold">{Math.min(totalItems, currentPage * itemsPerPage)}</span> of <span className="text-text-secondary font-semibold">{totalItems}</span> attempts
-          </p>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed border border-white/5 disabled:hover:bg-white/5"
-            >
-              Prev
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {getPageNumbers().map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all border border-white/5 ${
-                    currentPage === page
-                      ? 'bg-accent text-[#0b0f19] shadow-lg shadow-accent/20'
-                      : 'bg-white/5 text-text-muted hover:text-text-primary hover:bg-white/10'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed border border-white/5 disabled:hover:bg-white/5"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        itemName="attempts"
+      />
     </div>
   );
 }

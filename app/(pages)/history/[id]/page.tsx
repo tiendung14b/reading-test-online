@@ -4,6 +4,12 @@ import { useEffect, useState, Fragment, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Dialog, Listbox, Transition } from '@headlessui/react';
 import { BookOpen, CheckCircle, XCircle, X, ChevronLeft, ChevronDown, Trophy, Calendar } from 'lucide-react';
+import Loading from '@/components/ui/Loading';
+import ScoreBadge from '@/components/ui/ScoreBadge';
+import QuestionCard from '@/components/ui/QuestionCard';
+import MobilePassageModal from '@/components/ui/MobilePassageModal';
+import AIChatModal from '@/components/ui/AIChatModal';
+import { BotMessageSquare } from 'lucide-react';
 
 type Question = {
   id: number;
@@ -40,6 +46,7 @@ export default function HistoryDetailPage() {
   const [data, setData] = useState<HistoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeChatQuestionId, setActiveChatQuestionId] = useState<number | null>(null);
   const [showFab, setShowFab] = useState(false);
   const mobilePassageRef = useRef<HTMLDivElement>(null);
 
@@ -66,8 +73,8 @@ export default function HistoryDetailPage() {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
-        <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+      <div className="h-full" style={{ background: 'var(--bg-base)' }}>
+        <Loading size="lg" className="h-full" />
       </div>
     );
   }
@@ -124,6 +131,20 @@ export default function HistoryDetailPage() {
     </div>
   );
 
+  const getExerciseContext = (qId: number) => {
+    if (!data) return '';
+    const q = data.questions.find(x => x.id === qId);
+    if (!q) return '';
+    const userAns = data.user_answers[q.id];
+    const aiEval = data.ai_evaluation?.find(e => e.question_id === q.id);
+    let ctx = `Passage Type: ${data.type}\nTitle: ${data.title}\nContent:\n${data.content}\n\nQuestion:\n`;
+    ctx += `${q.question_text || 'Fill in the blank'}\n`;
+    if (q.options) ctx += `Options: ${JSON.stringify(q.options)}\n`;
+    ctx += `Correct Answer: ${q.correct_answer}\nUser Answer: ${userAns || 'None'}\n`;
+    if (aiEval && aiEval.correction) ctx += `AI Correction: ${aiEval.correction}\n`;
+    return ctx;
+  };
+
   return (
     <div className="flex h-full overflow-hidden" style={{ background: 'var(--bg-base)' }}>
       {/* Left Pane - Desktop */}
@@ -150,13 +171,7 @@ export default function HistoryDetailPage() {
               {new Date(data.completed_at).toLocaleDateString()}
             </span>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-text-primary">{data.score}%</span>
-              <span className="text-sm text-text-muted">Final Score</span>
-            </div>
-            <Trophy className="w-8 h-8" style={{ color: data.score >= 80 ? 'var(--accent)' : 'var(--text-muted)' }} />
-          </div>
+          <ScoreBadge score={data.score} showIcon />
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
@@ -168,108 +183,66 @@ export default function HistoryDetailPage() {
 
           {data.questions.map((q, idx) => {
             const userAns = data.user_answers[q.id];
-            const isCorrect = userAns === q.correct_answer;
             const aiEval = data.ai_evaluation?.find(e => e.question_id === q.id);
+            const isCorrect = aiEval ? aiEval.isCorrect : userAns === q.correct_answer;
             const aiCorrection = aiEval?.correction;
 
+            const reviewData = {
+              isCorrect,
+              correctAnswer: q.correct_answer,
+              correction: aiCorrection
+            };
+
             return (
-              <div key={q.id} className="rounded-2xl p-5 card-glass" style={{ border: `1px solid ${isCorrect ? 'rgba(0,212,170,0.2)' : 'rgba(255,77,109,0.2)'}` }}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-text-muted">Question {idx + 1}</span>
-                  {isCorrect ? <CheckCircle className="w-4 h-4 text-accent" /> : <XCircle className="w-4 h-4 text-danger" />}
-                </div>
-                {data.type !== 'cloze' && <p className="text-sm font-medium mb-4 text-text-primary">{q.question_text}</p>}
-                
-                {data.type === 'rewriting' ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-widest w-16 shrink-0 text-text-muted">Your:</span>
-                      <span
-                        className="text-xs font-semibold px-2 py-0.5 rounded"
-                        style={{
-                          background: isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)',
-                          color: isCorrect ? '#00d4aa' : '#ff4d6d',
-                        }}
-                      >
-                        {userAns || '—'}
-                      </span>
-                    </div>
-                    <div className="p-4 rounded-xl mt-3" style={{ background: isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)', border: `1px solid ${isCorrect ? 'rgba(0,212,170,0.2)' : 'rgba(255,77,109,0.2)'}` }}>
-                       <p className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: isCorrect ? '#00d4aa' : '#ff4d6d' }}>
-                         {isCorrect ? 'Correct!' : 'Accepted Answers:'}
-                       </p>
-                       <ul className="text-sm space-y-1.5" style={{ color: 'var(--text-secondary)' }}>
-                         {q.options && Object?.values(q.options).filter(Boolean).map((opt, i) => (
-                           <li key={i} className="flex gap-2"><span style={{ color: 'var(--accent)' }}>•</span> {opt}</li>
-                         ))}
-                       </ul>
-                       {aiCorrection && (
-                         <div className="mt-3 p-3 rounded-lg border border-white/10" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                           <p className="text-[11px] font-bold uppercase tracking-widest text-accent mb-1.5">AI Feedback & Explanation</p>
-                           <div className="text-sm text-text-secondary leading-relaxed ai-feedback-content" dangerouslySetInnerHTML={{ __html: aiCorrection }} />
-                         </div>
-                       )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {Object.entries(q.options).map(([label, text]) => {
-                      const isSelected = userAns === label;
-                      const isCorrectOpt = q.correct_answer === label;
-                      return (
-                        <div key={label} className="flex items-center gap-3 px-4 py-3 rounded-xl border" style={{
-                          background: isCorrectOpt ? 'rgba(0,212,170,0.08)' : isSelected && !isCorrect ? 'rgba(255,77,109,0.08)' : 'rgba(255,255,255,0.02)',
-                          borderColor: isCorrectOpt ? 'rgba(0,212,170,0.3)' : isSelected && !isCorrect ? 'rgba(255,77,109,0.3)' : 'var(--border)'
-                        }}>
-                          <span className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black shrink-0" style={{
-                            background: isCorrectOpt ? 'var(--accent)' : isSelected && !isCorrect ? '#ff4d6d' : 'rgba(255,255,255,0.06)',
-                            color: isCorrectOpt || (isSelected && !isCorrect) ? '#0b0f19' : 'var(--text-muted)'
-                          }}>{label}</span>
-                          <span className="text-sm flex-1" style={{
-                            color: isCorrectOpt ? '#00d4aa' : isSelected && !isCorrect ? '#ff4d6d' : 'var(--text-secondary)',
-                            fontWeight: isSelected || isCorrectOpt ? 600 : 400
-                          }}>{text}</span>
-                          {isCorrectOpt && <CheckCircle className="w-4 h-4 text-accent" />}
-                          {isSelected && !isCorrect && <XCircle className="w-4 h-4 text-danger" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <QuestionCard
+                key={q.id}
+                type={data.type as any}
+                index={idx}
+                question={q}
+                userAnswer={userAns}
+                review={reviewData}
+                onAskAI={() => setActiveChatQuestionId(q.id)}
+              />
             );
           })}
         </div>
       </div>
 
-      {/* Mobile FAB */}
-      {data.type === 'reading' && showFab && (
-        <button onClick={() => setIsModalOpen(true)} className="md:hidden fixed bottom-10 right-5 w-12 h-12 flex items-center justify-center rounded-full z-40 shadow-lg" style={{ background: 'var(--accent)', color: '#0b0f19' }}>
-          <BookOpen className="w-5 h-5" />
-        </button>
-      )}
+      {/* Mobile FABs */}
+      <div className="md:hidden fixed bottom-10 right-5 flex flex-col gap-3 z-40">
+        {data.type === 'reading' && showFab && (
+          <button onClick={() => setIsModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105" style={{ background: 'var(--accent)', color: '#0b0f19' }}>
+            <BookOpen className="w-5 h-5" />
+          </button>
+        )}
+      </div>
 
       {/* Mobile Modal */}
-      <Transition show={isModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50 md:hidden" onClose={() => setIsModalOpen(false)}>
-          <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0">
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-          </Transition.Child>
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-end p-3">
-              <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 translate-y-8" enterTo="opacity-100 translate-y-0" leave="ease-in duration-200" leaveFrom="opacity-100 translate-y-0" leaveTo="opacity-0 translate-y-8">
-                <Dialog.Panel className="w-full rounded-2xl overflow-hidden bg-bg-surface border border-border flex flex-col" style={{ maxHeight: '85vh' }}>
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                    <Dialog.Title className="text-sm font-semibold text-text-primary">Reading Passage</Dialog.Title>
-                    <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 text-text-muted"><X className="w-4 h-4" /></button>
-                  </div>
-                  <div className="overflow-y-auto px-5 py-6 flex-1"><ContentPane /></div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+      <MobilePassageModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Reading Passage"
+      >
+        <ContentPane />
+      </MobilePassageModal>
+
+      {/* AI Chat Modal */}
+      {activeChatQuestionId && (() => {
+        const q = data.questions.find(x => x.id === activeChatQuestionId);
+        const qIdx = data.questions.findIndex(x => x.id === activeChatQuestionId);
+        const aiEval = data.ai_evaluation?.find(e => e.question_id === activeChatQuestionId);
+        return (
+          <AIChatModal
+            isOpen={!!activeChatQuestionId}
+            onClose={() => setActiveChatQuestionId(null)}
+            exerciseContext={getExerciseContext(activeChatQuestionId)}
+            questionLabel={data.type === 'cloze' ? `Blank [${qIdx + 1}]` : `Question ${qIdx + 1}`}
+            questionText={q?.question_text || 'Fill in the blank'}
+            userAnswer={data.user_answers[activeChatQuestionId]}
+            aiFeedback={aiEval?.correction || ''}
+          />
+        );
+      })()}
     </div>
   );
 }

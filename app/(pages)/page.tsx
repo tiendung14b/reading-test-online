@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, FileText, Trophy, Clock, Plus, ArrowRight, Search, Filter, Edit3 } from 'lucide-react';
+import Loading from '@/components/ui/Loading';
+import Badge from '@/components/ui/Badge';
+import Pagination from '@/components/ui/Pagination';
+import EmptyState from '@/components/ui/EmptyState';
 
 type Exercise = {
   id: number;
@@ -58,23 +62,7 @@ export default function Home() {
     setCurrentPage(1);
   }, [searchQuery, typeFilter]);
 
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisible = 5;
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      let start = Math.max(1, currentPage - 2);
-      let end = Math.min(totalPages, currentPage + 2);
-      if (currentPage <= 3) {
-        end = maxVisible;
-      } else if (currentPage >= totalPages - 2) {
-        start = totalPages - maxVisible + 1;
-      }
-      for (let i = start; i <= end; i++) pages.push(i);
-    }
-    return pages;
-  };
+  // Removed local getPageNumbers function as it's now in the Pagination component
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -137,36 +125,20 @@ export default function Home() {
       </div>
 
       {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center h-60">
-          <div
-            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
-          />
-        </div>
-      )}
+      {loading && <Loading />}
 
       {/* Empty */}
       {!loading && totalItems === 0 && !searchQuery && typeFilter === 'all' && (
-        <div
-          className="card-glass rounded-2xl flex flex-col items-center justify-center py-20 text-center"
-        >
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-            style={{ background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.2)' }}
-          >
-            <BookOpen className="w-8 h-8" style={{ color: 'var(--accent)' }} />
-          </div>
-          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-            No exercises yet
-          </h3>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-            Create your first reading or cloze test to get started.
-          </p>
-          <Link href="/create" className="btn-primary px-5 py-2.5 text-sm">
-            Create Exercise
-          </Link>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title="No exercises yet"
+          description="Create your first reading or cloze test to get started."
+          action={
+            <Link href="/create" className="btn-primary px-5 py-2.5 text-sm">
+              Create Exercise
+            </Link>
+          }
+        />
       )}
 
       {/* Exercise Grid */}
@@ -180,11 +152,9 @@ export default function Home() {
             >
               {/* Top row */}
               <div className="flex items-center justify-between mb-4">
-                <span
-                  className={ex.type === 'reading' ? 'badge-blue' : ex.type === 'rewriting' ? 'badge-purple' : 'badge-teal'}
-                >
+                <Badge type={ex.type as any}>
                   {ex.type === 'reading' ? 'Reading' : ex.type === 'rewriting' ? 'Rewriting' : 'Cloze'}
-                </span>
+                </Badge>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); router.push(`/edit/${ex.id}`); }}
@@ -255,47 +225,14 @@ export default function Home() {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-10 px-2">
-          <p className="text-xs text-text-muted">
-            Showing <span className="text-text-secondary font-semibold">{Math.min(totalItems, (currentPage - 1) * itemsPerPage + 1)}</span> to <span className="text-text-secondary font-semibold">{Math.min(totalItems, currentPage * itemsPerPage)}</span> of <span className="text-text-secondary font-semibold">{totalItems}</span> exercises
-          </p>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed border border-white/5 disabled:hover:bg-white/5"
-            >
-              Prev
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {getPageNumbers().map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all border border-white/5 ${
-                    currentPage === page
-                      ? 'bg-accent text-[#0b0f19] shadow-lg shadow-accent/20'
-                      : 'bg-white/5 text-text-muted hover:text-text-primary hover:bg-white/10'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed border border-white/5 disabled:hover:bg-white/5"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        itemName="exercises"
+      />
     </div>
   );
 }

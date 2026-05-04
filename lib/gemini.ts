@@ -177,5 +177,57 @@ Hãy trả về định dạng JSON CHÍNH XÁC cấu trúc sau (không có mark
     } catch (error) {
       return false;
     }
+  },
+
+  /**
+   * Chat với AI về bài tập
+   */
+  async chatWithExerciseContext(exerciseContext: string, history: {role: string, text: string}[], message: string) {
+    const systemPrompt = `Bạn là một gia sư tiếng Anh thân thiện, nhiệt tình và chuyên nghiệp. Học sinh đang hỏi bạn về bài tập họ vừa làm.
+Hãy trả lời ngắn gọn, dễ hiểu, tập trung trực tiếp vào câu hỏi. Khuyến khích người học.
+
+Dưới đây là chi tiết bài tập (Nội dung, Câu hỏi, Đáp án của học sinh, Đáp án đúng):
+====================
+${exerciseContext}
+====================
+
+Dựa vào thông tin bài tập trên, hãy trả lời câu hỏi của học sinh.`;
+
+    // Convert history format to genai contents
+    // If history is empty, we prepend systemPrompt to the new message.
+    // If history is not empty, we need to ensure the first message contains the systemPrompt.
+    
+    let contents = [];
+    
+    if (history.length === 0) {
+      contents.push({ role: 'user', parts: [{ text: systemPrompt + '\n\nCâu hỏi của học sinh: ' + message }] });
+    } else {
+      // Build history
+      for (let i = 0; i < history.length; i++) {
+        const msg = history[i];
+        if (i === 0 && msg.role === 'user') {
+          contents.push({ role: 'user', parts: [{ text: systemPrompt + '\n\nCâu hỏi của học sinh: ' + msg.text }] });
+        } else {
+          contents.push({ role: msg.role === 'ai' ? 'model' : 'user', parts: [{ text: msg.text }] });
+        }
+      }
+      contents.push({ role: 'user', parts: [{ text: message }] });
+    }
+
+    try {
+      return await executeWithTokenRotation(async (ai) => {
+        const response = await ai.models.generateContent({
+          model: CHEAPEST_MODEL,
+          contents: contents,
+          config: {
+            temperature: 0.7,
+          }
+        });
+        return response.text;
+      });
+    } catch (error) {
+      console.error("Lỗi khi chat với AI:", error);
+      throw error;
+    }
   }
 };

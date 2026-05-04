@@ -5,6 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { Dialog, Listbox, Transition } from '@headlessui/react';
 import { BookOpen, CheckCircle, XCircle, X, ChevronLeft, ChevronDown, Check, GraduationCap, Edit3, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
+import QuestionCard from '@/components/ui/QuestionCard';
+import MobilePassageModal from '@/components/ui/MobilePassageModal';
+import AIChatModal from '@/components/ui/AIChatModal';
+import { BotMessageSquare } from 'lucide-react';
 
 type Question = {
   id: number;
@@ -53,6 +57,7 @@ export default function PracticePage() {
   const [vocab, setVocab] = useState<Vocabulary[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeChatQuestionId, setActiveChatQuestionId] = useState<number | null>(null);
   const [showFab, setShowFab] = useState(false);
   const mobilePassageRef = useRef<HTMLDivElement>(null);
 
@@ -248,6 +253,20 @@ export default function PracticePage() {
     </div>
   );
 
+  const getExerciseContext = (qId: number) => {
+    if (!exercise || !results) return '';
+    const q = exercise.questions.find(x => x.id === qId);
+    if (!q) return '';
+    const userAns = answers[q.id];
+    const detail = results.details.find(d => d.question_id === q.id);
+    let ctx = `Passage Type: ${exercise.type}\nTitle: ${exercise.title}\nContent:\n${exercise.content}\n\nQuestion:\n`;
+    ctx += `${q.question_text || 'Fill in the blank'}\n`;
+    if (q.options) ctx += `Options: ${JSON.stringify(q.options)}\n`;
+    ctx += `Correct Answer: ${detail?.correct_answer}\nUser Answer: ${userAns || 'None'}\n`;
+    if (detail && detail.correction) ctx += `AI Correction: ${detail.correction}\n`;
+    return ctx;
+  };
+
   const answeredCount = Object.values(answers).filter(Boolean).length;
   const totalQ = exercise.questions.length;
   const progressPct = totalQ > 0 ? Math.round((answeredCount / totalQ) * 100) : 0;
@@ -415,221 +434,24 @@ export default function PracticePage() {
 
           {exercise.questions.map((q, idx) => {
             const detail = results?.details.find(d => d.question_id === q.id);
-            const isReading = exercise.type === 'reading';
-
-            if (exercise.type === 'cloze' && results) {
-              const userAns = detail?.user_answer || '—';
-              const correctAns = detail?.correct_answer || '';
-              const userOptText = q.options[userAns] || '';
-              const correctOptText = q.options[correctAns] || '';
-
-              return (
-                <div
-                  key={q.id}
-                  className="rounded-xl p-4"
-                  style={{
-                    background: 'var(--bg-card)',
-                    border: `1px solid ${detail?.isCorrect ? 'rgba(0,212,170,0.3)' : 'rgba(255,77,109,0.3)'}`,
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-                      Blank [{idx + 1}]
-                    </span>
-                    {detail?.isCorrect
-                      ? <CheckCircle className="w-4 h-4" style={{ color: '#00d4aa' }} />
-                      : <XCircle className="w-4 h-4" style={{ color: '#ff4d6d' }} />
-                    }
-                  </div>
-
-                  {/* Your answer */}
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest w-16 shrink-0" style={{ color: 'var(--text-muted)' }}>Your:</span>
-                    <span
-                      className="text-xs font-semibold px-2 py-0.5 rounded"
-                      style={{
-                        background: detail?.isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)',
-                        color: detail?.isCorrect ? '#00d4aa' : '#ff4d6d',
-                      }}
-                    >
-                      {userAns}{userOptText ? `. ${userOptText}` : ''}
-                    </span>
-                  </div>
-
-                  {/* Correct answer */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest w-16 shrink-0" style={{ color: 'var(--text-muted)' }}>Answer:</span>
-                    <span
-                      className="text-xs font-semibold px-2 py-0.5 rounded"
-                      style={{ background: 'rgba(0,212,170,0.1)', color: '#00d4aa' }}
-                    >
-                      {correctAns}{correctOptText ? `. ${correctOptText}` : ''}
-                    </span>
-                  </div>
-
-                  {/* All options list */}
-                  <div className="mt-3 pt-3 space-y-1" style={{ borderTop: '1px solid var(--border)' }}>
-                    {Object.entries(q.options).map(([label, text]) => {
-                      const isUser = label === userAns;
-                      const isCorrectLabel = label === correctAns;
-                      return (
-                        <div key={label} className="flex items-center gap-2">
-                          <span
-                            className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-black shrink-0"
-                            style={{
-                              background: isCorrectLabel ? 'var(--accent)' : isUser && !detail?.isCorrect ? '#ff4d6d' : 'rgba(255,255,255,0.04)',
-                              color: isCorrectLabel || (isUser && !detail?.isCorrect) ? '#0b0f19' : 'var(--text-muted)',
-                            }}
-                          >{label}</span>
-                          <span
-                            className="text-[11px]"
-                            style={{
-                              color: isCorrectLabel ? '#00d4aa' : isUser && !detail?.isCorrect ? '#ff4d6d' : 'var(--text-muted)',
-                              fontWeight: isCorrectLabel || isUser ? 600 : 400,
-                              textDecoration: isUser && !detail?.isCorrect ? 'line-through' : 'none',
-                            }}
-                          >
-                            {text || `Option ${label}`}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            }
-
-            if (exercise.type === 'cloze') return null;
+            const reviewData = results ? {
+              isCorrect: detail?.isCorrect,
+              correctAnswer: detail?.correct_answer,
+              correction: detail?.correction
+            } : null;
 
             return (
-              <div
+              <QuestionCard
                 key={q.id}
-                className="rounded-2xl p-5 transition-all duration-200"
-                style={{
-                  background: 'var(--bg-card)',
-                  border: `1px solid ${
-                    results
-                      ? (detail?.isCorrect ? 'rgba(0,212,170,0.3)' : 'rgba(255,77,109,0.25)')
-                      : 'var(--border)'
-                  }`,
-                }}
-              >
-                {/* Question text */}
-                <p className="text-sm font-medium mb-4 leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-                  <span
-                    className="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold mr-2 align-middle"
-                    style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--text-muted)' }}
-                  >
-                    {idx + 1}
-                  </span>
-                  {q.question_text || `Question ${idx + 1}`}
-                </p>
-
-                {/* Options / Text Input */}
-                {exercise.type === 'rewriting' ? (
-                  <div className="space-y-3">
-                    <textarea
-                      rows={3}
-                      placeholder="Type your answer here..."
-                      value={answers[q.id] || ''}
-                      onChange={e => handleSelectAnswer(q.id, e.target.value)}
-                      disabled={!!results}
-                      className="input-dark w-full px-4 py-3 text-sm leading-relaxed resize-none"
-                    />
-                    {results && detail && (
-                      <div className="p-4 rounded-xl mt-3" style={{ background: detail.isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)', border: `1px solid ${detail.isCorrect ? 'rgba(0,212,170,0.2)' : 'rgba(255,77,109,0.2)'}` }}>
-                         <p className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: detail.isCorrect ? '#00d4aa' : '#ff4d6d' }}>
-                           {detail.isCorrect ? 'Correct!' : (detail.correction ? 'Feedback & Correction:' : 'Accepted Answers:')}
-                         </p>
-                         
-                         {detail.correction ? (
-                           <div 
-                             className="text-sm leading-relaxed ai-correction-content"
-                             style={{ color: 'var(--text-secondary)' }}
-                             dangerouslySetInnerHTML={{ __html: detail.correction }}
-                           />
-                         ) : (
-                           <ul className="text-sm space-y-1.5" style={{ color: 'var(--text-secondary)' }}>
-                             {Object.values(q.options).filter(Boolean).map((opt, i) => (
-                               <li key={i} className="flex gap-2"><span style={{ color: 'var(--accent)' }}>•</span> {opt}</li>
-                             ))}
-                           </ul>
-                         )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                  {Object.entries(q.options).map(([label, text]) => {
-                    const isSelected = answers[q.id] === label;
-                    const isCorrectOpt = results && detail?.correct_answer === label;
-                    const isWrongOpt = results && isSelected && !detail?.isCorrect;
-
-                    return (
-                      <button
-                        key={label}
-                        onClick={() => handleSelectAnswer(q.id, label)}
-                        disabled={!!results}
-                        className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-150"
-                        style={{
-                          background: isCorrectOpt
-                            ? 'rgba(0,212,170,0.1)'
-                            : isWrongOpt
-                            ? 'rgba(255,77,109,0.1)'
-                            : isSelected
-                            ? 'rgba(255,255,255,0.06)'
-                            : 'rgba(255,255,255,0.03)',
-                          border: `1px solid ${
-                            isCorrectOpt
-                              ? 'rgba(0,212,170,0.45)'
-                              : isWrongOpt
-                              ? 'rgba(255,77,109,0.45)'
-                              : isSelected
-                              ? 'rgba(255,255,255,0.18)'
-                              : 'var(--border)'
-                          }`,
-                          cursor: results ? 'default' : 'pointer',
-                        }}
-                      >
-                        {/* Option letter badge */}
-                        <span
-                          className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black shrink-0"
-                          style={{
-                            background: isCorrectOpt
-                              ? 'var(--accent)'
-                              : isWrongOpt
-                              ? '#ff4d6d'
-                              : isSelected
-                              ? 'rgba(255,255,255,0.15)'
-                              : 'rgba(255,255,255,0.06)',
-                            color: isCorrectOpt || isWrongOpt ? '#0b0f19' : 'var(--text-muted)',
-                          }}
-                        >
-                          {label}
-                        </span>
-                        <span
-                          className="text-sm flex-1"
-                          style={{
-                            color: isCorrectOpt
-                              ? '#00d4aa'
-                              : isWrongOpt
-                              ? '#ff4d6d'
-                              : isSelected
-                              ? 'var(--text-primary)'
-                              : 'var(--text-secondary)',
-                            fontWeight: isSelected || isCorrectOpt || isWrongOpt ? 600 : 400,
-                          }}
-                        >
-                          {text || `Option ${label}`}
-                        </span>
-                        {isCorrectOpt && <CheckCircle className="w-4 h-4 shrink-0" style={{ color: '#00d4aa' }} />}
-                        {isWrongOpt && <XCircle className="w-4 h-4 shrink-0" style={{ color: '#ff4d6d' }} />}
-                      </button>
-                    );
-                  })}
-                </div>
-                )}
-              </div>
+                type={exercise.type as any}
+                index={idx}
+                question={q}
+                userAnswer={answers[q.id] || ''}
+                onAnswerChange={(val) => handleSelectAnswer(q.id, val)}
+                disabled={!!results}
+                review={reviewData}
+                onAskAI={results ? () => setActiveChatQuestionId(q.id) : undefined}
+              />
             );
           })}
 
@@ -690,79 +512,41 @@ export default function PracticePage() {
         )}
       </div>
 
-      {/* Mobile FAB to open Reading Content */}
-      {exercise.type === 'reading' && showFab && (
-        <button
-          className="md:hidden fixed bottom-24 right-5 w-12 h-12 flex items-center justify-center rounded-full z-40 transition-all duration-300"
-          style={{ background: 'var(--accent)', color: '#0b0f19', boxShadow: '0 4px 20px rgba(0,212,170,0.4)' }}
-          onClick={() => setIsModalOpen(true)}
-        >
-          <BookOpen className="w-5 h-5" />
-        </button>
-      )}
+      {/* Mobile FABs */}
+      <div className="md:hidden fixed bottom-24 right-5 flex flex-col gap-3 z-40">
+        {exercise.type === 'reading' && showFab && (
+          <button onClick={() => setIsModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105" style={{ background: 'var(--accent)', color: '#0b0f19' }}>
+            <BookOpen className="w-5 h-5" />
+          </button>
+        )}
+      </div>
 
-      {/* Mobile modal for reading passage */}
-      <Transition show={isModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50 md:hidden" onClose={() => setIsModalOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }} />
-          </Transition.Child>
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-end p-3">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 translate-y-8"
-                enterTo="opacity-100 translate-y-0"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 translate-y-0"
-                leaveTo="opacity-0 translate-y-8"
-              >
-                <Dialog.Panel
-                  className="w-full rounded-2xl overflow-hidden"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
-                >
-                  <div
-                    className="flex items-center justify-between px-5 py-4 shrink-0"
-                    style={{ borderBottom: '1px solid var(--border)' }}
-                  >
-                    <Dialog.Title className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      Reading Passage
-                    </Dialog.Title>
-                    <button
-                      onClick={() => setIsModalOpen(false)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center"
-                      style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto px-5 py-5 flex-1">
-                    {renderContentPane()}
-                  </div>
-                  <div className="px-5 py-4 shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
-                    <button
-                      className="w-full py-3 rounded-xl text-sm font-semibold"
-                      style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}
-                      onClick={() => setIsModalOpen(false)}
-                    >
-                      Back to Questions
-                    </button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+      {/* Mobile Modal */}
+      <MobilePassageModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Reading Passage"
+      >
+        {renderContentPane()}
+      </MobilePassageModal>
+
+      {/* AI Chat Modal */}
+      {results && activeChatQuestionId && (() => {
+        const q = exercise.questions.find(x => x.id === activeChatQuestionId);
+        const qIdx = exercise.questions.findIndex(x => x.id === activeChatQuestionId);
+        const detail = results.details.find(d => d.question_id === activeChatQuestionId);
+        return (
+          <AIChatModal
+            isOpen={!!activeChatQuestionId}
+            onClose={() => setActiveChatQuestionId(null)}
+            exerciseContext={getExerciseContext(activeChatQuestionId)}
+            questionLabel={exercise.type === 'cloze' ? `Blank [${qIdx + 1}]` : `Question ${qIdx + 1}`}
+            questionText={q?.question_text || 'Fill in the blank'}
+            userAnswer={answers[activeChatQuestionId]}
+            aiFeedback={detail?.correction || ''}
+          />
+        );
+      })()}
     </div>
   );
 }
