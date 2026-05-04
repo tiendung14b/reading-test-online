@@ -184,7 +184,7 @@ export default function AIChatModal({
 
         <div className="fixed inset-0 overflow-hidden">
           <div className="absolute inset-0 overflow-hidden">
-            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
+            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full sm:pl-16">
               <Transition.Child
                 as={Fragment}
                 enter="transform transition ease-in-out duration-300 sm:duration-400"
@@ -195,7 +195,7 @@ export default function AIChatModal({
                 leaveTo="translate-x-full"
               >
                 <Dialog.Panel className="pointer-events-auto w-screen max-w-md">
-                  <div className="flex h-full flex-col shadow-2xl" style={{ background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)' }}>
+                  <div className="flex h-full flex-col shadow-2xl" style={{ background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', height: '100dvh' }}>
                     
                     {/* Header */}
                     <div className="px-5 py-4 flex flex-col shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
@@ -309,12 +309,13 @@ export default function AIChatModal({
                         <form onSubmit={handleSubmit} className="relative">
                           <textarea
                             rows={1}
-                            className="w-full rounded-xl pl-4 pr-12 py-3 text-sm resize-none focus:outline-none"
+                            className="w-full rounded-xl pl-4 pr-12 py-3 text-base resize-none focus:outline-none"
                             style={{ 
                               background: 'var(--bg-base)', 
                               border: '1px solid var(--border)',
                               color: 'var(--text-primary)',
-                              maxHeight: '120px'
+                              maxHeight: '120px',
+                              fontSize: '16px' // Force 16px to prevent iOS zoom
                             }}
                             placeholder="Ask about your answers..."
                             value={input}
