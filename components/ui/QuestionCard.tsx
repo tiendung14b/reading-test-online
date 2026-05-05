@@ -192,12 +192,12 @@ export default function QuestionCard({
             </div>
           ) : (
             <textarea
-              rows={3}
-              placeholder="Type your answer here..."
-              value={userAnswer || ''}
-              onChange={e => onAnswerChange?.(e.target.value)}
               disabled={disabled}
-              className="input-dark w-full px-4 py-3 text-sm leading-relaxed resize-none"
+              value={userAnswer}
+              onChange={(e) => onAnswerChange?.(e.target.value)}
+              placeholder="Type your rewritten sentence here..."
+              className="input-dark w-full px-4 py-3 leading-relaxed resize-none"
+              rows={3}
             />
           )}
 
