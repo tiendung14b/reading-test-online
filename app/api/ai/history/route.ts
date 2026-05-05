@@ -25,7 +25,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { exercise_id, title, context, messages } = await req.json();
+    const { exercise_id, title, context, messages, user_answer, ai_feedback } = await req.json();
     
     if (!title || !messages) {
       return NextResponse.json({ error: 'Title and messages are required' }, { status: 400 });
@@ -33,8 +33,8 @@ export async function POST(req: Request) {
     
     const db = await getDb();
     await db.execute({
-      sql: 'INSERT INTO ai_chat_histories (exercise_id, title, context, messages) VALUES (?, ?, ?, ?)',
-      args: [exercise_id || null, title, context || null, JSON.stringify(messages)]
+      sql: 'INSERT INTO ai_chat_histories (exercise_id, title, context, messages, user_answer, ai_feedback) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [exercise_id || null, title, context || null, JSON.stringify(messages), user_answer || null, ai_feedback || null]
     });
     
     return NextResponse.json({ success: true });

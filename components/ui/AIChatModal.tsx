@@ -180,14 +180,14 @@ export default function AIChatModal({
     
     // Build a descriptive title
     const typeLabel = exerciseType ? exerciseType.charAt(0).toUpperCase() + exerciseType.slice(1) : '';
-    const qSnippet = questionText ? (questionText.length > 30 ? questionText.substring(0, 30) + '...' : questionText) : '';
+    const qSnippet = questionText || '';
     
     let displayTitle = '';
     if (exerciseTitle) {
       displayTitle = `${exerciseTitle} | ${typeLabel} | ${questionLabel || 'General'}`;
-      if (qSnippet) displayTitle += `: ${qSnippet}`;
+      if (qSnippet) displayTitle += ` ${qSnippet}`;
     } else {
-      displayTitle = `${qSnippet ? `: ${qSnippet}` : ''}`;
+      displayTitle = `${qSnippet ? qSnippet : ''}`;
     }
 
     const savePromise = fetch('/api/ai/history', {
@@ -197,7 +197,9 @@ export default function AIChatModal({
         exercise_id: exerciseId,
         title: displayTitle,
         context: exerciseContext,
-        messages: messages
+        messages: messages,
+        user_answer: userAnswer,
+        ai_feedback: aiFeedback
       }),
     });
 
