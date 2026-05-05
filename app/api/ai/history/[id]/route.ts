@@ -17,7 +17,7 @@ export async function GET(
       return NextResponse.json({ error: 'History not found' }, { status: 404 });
     }
     
-    const row = result.rows[0];
+    const row = result.rows[0] as any;
     const item = {
       ...row,
       messages: JSON.parse(row.messages as string)

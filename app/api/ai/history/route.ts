@@ -11,7 +11,7 @@ export async function GET() {
       ORDER BY h.created_at DESC
     `);
     
-    const items = result.rows.map(row => ({
+    const items = result.rows.map((row: any) => ({
       ...row,
       messages: JSON.parse(row.messages as string)
     }));
