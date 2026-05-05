@@ -66,6 +66,7 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+  --color-on-accent: var(--text-on-accent);
   --color-ui-border: var(--border);
   --color-ui-border-strong: var(--border-strong);
   --color-subtle: var(--bg-subtle);

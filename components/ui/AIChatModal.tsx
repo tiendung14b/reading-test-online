@@ -15,39 +15,60 @@ export type ChatMessage = {
 const MarkdownText = ({ content }: { content: string }) => {
   if (!content) return null;
   
-  // Split by bold (**text**), inline code (`text`), and list items (\n- text)
-  const parts = content.split(/(\*\*.*?\*\*|`.*?`|\n- .*)/g);
+  // Split by headings (### text), bold (**text**), inline code (`text`), and list items
+  const lines = content.split('\n');
   
   return (
-    <>
-      {parts.map((part, i) => {
-        if (!part) return null;
+    <div className="space-y-2">
+      {lines.map((line, idx) => {
+        if (!line.trim()) return <div key={idx} className="h-2" />;
         
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={i} className="font-bold" style={{ color: 'var(--accent)' }}>{part.slice(2, -2)}</strong>;
-        }
-        
-        if (part.startsWith('`') && part.endsWith('`')) {
+        // Handle Headings (###)
+        if (line.startsWith('### ')) {
           return (
-            <code key={i} className="px-1.5 py-0.5 rounded font-mono text-[12px]" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--accent)' }}>
-              {part.slice(1, -1)}
-            </code>
+            <h4 key={idx} className="text-sm font-bold mt-3 mb-1" style={{ color: 'var(--accent)' }}>
+              {line.replace('### ', '')}
+            </h4>
           );
         }
-        
-        if (part.startsWith('\n- ')) {
+
+        // Handle List Items (- or *)
+        if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
+          const text = line.trim().replace(/^[-•]\s+/, '');
           return (
-            <div key={i} className="pl-4 my-1 flex gap-2">
-              <span style={{ color: 'var(--accent)' }}>•</span>
-              <span>{part.slice(3)}</span>
+            <div key={idx} className="pl-4 flex gap-2">
+              <span className="shrink-0" style={{ color: 'var(--accent)' }}>•</span>
+              <span>{renderInline(text)}</span>
             </div>
           );
         }
-        
-        return <span key={i}>{part}</span>;
+
+        return <p key={idx}>{renderInline(line)}</p>;
       })}
-    </>
+    </div>
   );
+};
+
+// Helper to render bold and code within a line
+const renderInline = (text: string) => {
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+  return parts.map((part, i) => {
+    if (!part) return null;
+    
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-bold text-accent">{part.slice(2, -2)}</strong>;
+    }
+    
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={i} className="px-1.5 py-0.5 rounded font-mono text-[12px] bg-subtle text-accent border border-ui-border">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    
+    return <span key={i}>{part}</span>;
+  });
 };
 
 interface AIChatModalProps {
@@ -311,7 +332,7 @@ export default function AIChatModal({
                             </div>
                             <div className={`max-w-[85%] rounded-2xl p-4 text-[13px] leading-relaxed whitespace-pre-wrap shadow-sm ${isAi ? 'rounded-tl-sm' : 'rounded-tr-sm'}`} style={{ 
                               background: isAi ? 'var(--bg-card)' : 'var(--accent)',
-                              color: isAi ? 'var(--text-primary)' : '#0b0f19',
+                              color: isAi ? 'var(--text-primary)' : 'var(--text-on-accent)',
                               border: isAi ? '1px solid var(--border)' : 'none'
                             }}>
                               <MarkdownText content={msg.text} />
