@@ -95,42 +95,36 @@ export default function AIHistoryDetailPage() {
                 {isReviewExpanded ? <ChevronUp className="w-5 h-5 text-text-muted" /> : <ChevronDown className="w-5 h-5 text-text-muted" />}
               </button>
 
-              <Transition
-                show={isReviewExpanded}
-                enter="transition-all duration-500 ease-in-out"
-                enterFrom="opacity-0 translate-y-[-10px] max-h-0"
-                enterTo="opacity-100 translate-y-0 max-h-[1000px]"
-                leave="transition-all duration-300 ease-in-out"
-                leaveFrom="opacity-100 translate-y-0 max-h-[1000px]"
-                leaveTo="opacity-0 translate-y-[-10px] max-h-0"
-              >
-                <div className="px-5 pb-5 overflow-hidden">
-                  <div className="pt-2 pb-5 border-b border-ui-border mb-5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">FULL QUESTION CONTEXT</p>
-                    <p className="text-sm text-text-primary leading-relaxed italic font-medium line-clamp-4">
-                      {history.title}
-                    </p>
-                  </div>
+              <div className={`grid transition-all duration-500 ease-in-out ${isReviewExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                <div className="overflow-hidden">
+                  <div className="px-5 pb-5">
+                    <div className="pt-2 pb-5 border-b border-ui-border mb-5">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">FULL QUESTION CONTEXT</p>
+                      <p className="text-sm text-text-primary leading-relaxed italic font-medium line-clamp-4">
+                        {history.title}
+                      </p>
+                    </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {history.user_answer && (
-                      <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-accent mb-2">Your Answer</p>
-                        <p className="text-sm font-medium text-text-primary">{history.user_answer}</p>
-                      </div>
-                    )}
-                    {history.ai_feedback && (
-                      <div className="p-4 rounded-xl bg-success/5 border border-success/20">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-success mb-2">AI Suggestion</p>
-                        <div 
-                          className="text-sm text-text-primary leading-relaxed ai-correction-content"
-                          dangerouslySetInnerHTML={{ __html: history.ai_feedback }}
-                        />
-                      </div>
-                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {history.user_answer && (
+                        <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-accent mb-2">Your Answer</p>
+                          <p className="text-sm font-medium text-text-primary">{history.user_answer}</p>
+                        </div>
+                      )}
+                      {history.ai_feedback && (
+                        <div className="p-4 rounded-xl bg-success/5 border border-success/20">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-success mb-2">AI Suggestion</p>
+                          <div 
+                            className="text-sm text-text-primary leading-relaxed ai-correction-content"
+                            dangerouslySetInnerHTML={{ __html: history.ai_feedback }}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </Transition>
+              </div>
             </div>
 
             <div className="space-y-6">
