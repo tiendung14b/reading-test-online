@@ -51,12 +51,16 @@ const MarkdownText = ({ content }: { content: string }) => {
 
 // Helper to render bold and code within a line
 const renderInline = (text: string) => {
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
   return parts.map((part, i) => {
     if (!part) return null;
     
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={i} className="font-bold text-accent">{part.slice(2, -2)}</strong>;
+    }
+
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={i} className="italic text-text-secondary">{part.slice(1, -1)}</em>;
     }
     
     if (part.startsWith('`') && part.endsWith('`')) {
