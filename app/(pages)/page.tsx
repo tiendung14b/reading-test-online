@@ -96,14 +96,14 @@ export default function Home() {
         </div>
 
         {/* Type Tabs */}
-        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+        <div className="flex bg-subtle p-1 rounded-xl border border-ui-border">
           {(['all', 'reading', 'cloze', 'rewriting'] as const).map((type) => (
             <button
               key={type}
               onClick={() => setTypeFilter(type)}
               className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                 typeFilter === type 
-                  ? 'bg-accent text-[#0b0f19] shadow-lg shadow-accent/20' 
+                  ? 'bg-accent text-on-accent shadow-lg shadow-accent/20' 
                   : 'text-text-muted hover:text-text-secondary'
               }`}
             >
@@ -118,7 +118,7 @@ export default function Home() {
         <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted">
           {typeFilter === 'all' ? 'All Exercises' : `${typeFilter} Exercises`}
           {searchQuery && <span className="ml-2 font-normal lowercase">matching "{searchQuery}"</span>}
-          <span className="ml-2 text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-text-secondary">
+          <span className="ml-2 text-[10px] bg-subtle px-2 py-0.5 rounded-full text-text-secondary">
             {totalItems}
           </span>
         </h2>
@@ -159,18 +159,17 @@ export default function Home() {
                   <button
                     onClick={(e) => { e.stopPropagation(); router.push(`/edit/${ex.id}`); }}
                     className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 hover:bg-accent/10 hover:text-accent border-none outline-none"
-                    style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}
+                    style={{ background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}
                     title="Edit Exercise"
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:bg-accent"
-                    style={{ background: 'rgba(255,255,255,0.04)' }}
+                    style={{ background: 'var(--bg-subtle)' }}
                   >
                     <ArrowRight
-                      className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-[#0b0f19]"
-                      style={{ color: 'var(--text-muted)' }}
+                      className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 text-text-muted group-hover:text-text-on-accent"
                     />
                   </div>
                 </div>
@@ -190,8 +189,8 @@ export default function Home() {
                 style={{ borderTop: '1px solid var(--border)' }}
               >
                 <div className="flex items-center gap-1.5">
-                  <Trophy className="w-3.5 h-3.5" style={{ color: ex.highest_score ? '#f59e0b' : 'var(--text-muted)' }} />
-                  <span className="text-xs font-semibold" style={{ color: ex.highest_score ? '#f59e0b' : 'var(--text-muted)' }}>
+                  <Trophy className="w-3.5 h-3.5" style={{ color: ex.highest_score ? 'var(--warning)' : 'var(--text-muted)' }} />
+                  <span className="text-xs font-semibold" style={{ color: ex.highest_score ? 'var(--warning)' : 'var(--text-muted)' }}>
                     {ex.highest_score !== null ? `${ex.highest_score}%` : 'Not tried'}
                   </span>
                 </div>

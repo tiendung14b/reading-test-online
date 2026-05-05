@@ -18,7 +18,7 @@ export default function ScoreBadge({ score, showIcon = false, className = "" }: 
   const color = getScoreColor(score);
 
   return (
-    <div className={`flex items-center gap-4 px-4 py-2 rounded-xl bg-white/5 shrink-0 ${className}`}>
+    <div className={`flex items-center gap-4 px-4 py-2 rounded-xl bg-subtle shrink-0 ${className}`}>
       <div className="flex flex-col items-center">
         <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Score</span>
         <span className="text-xl font-bold" style={{ color }}>
@@ -27,8 +27,8 @@ export default function ScoreBadge({ score, showIcon = false, className = "" }: 
       </div>
       {showIcon && (
         <>
-          <div className="h-8 w-px bg-white/10" />
-          <Trophy className="w-5 h-5" style={{ color: score >= 80 ? '#f59e0b' : 'var(--text-muted)' }} />
+          <div className="h-8 w-px bg-subtle" />
+          <Trophy className="w-5 h-5" style={{ color: score >= 80 ? 'var(--warning)' : 'var(--text-muted)' }} />
         </>
       )}
     </div>

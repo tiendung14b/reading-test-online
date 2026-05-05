@@ -124,10 +124,10 @@ export default function LessonViewerPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--bg-base)' }}>
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 py-4 shrink-0 border-b border-white/5" style={{ background: 'var(--bg-surface)' }}>
+      <div className="flex items-center gap-4 px-6 py-4 shrink-0 border-b border-ui-border" style={{ background: 'var(--bg-surface)' }}>
         <button
           onClick={() => router.push('/lessons')}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors text-text-muted"
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-subtle transition-colors text-text-muted"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -144,7 +144,7 @@ export default function LessonViewerPage() {
           {toc.length > 0 && (
             <button
               onClick={() => setIsTocOpen(!isTocOpen)}
-              className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-text-muted"
+              className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-subtle text-text-muted"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -152,7 +152,7 @@ export default function LessonViewerPage() {
           {/* Edit Button */}
           <button
             onClick={() => router.push(`/lessons/${params.id}/edit`)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-text-muted hover:text-text-primary transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-subtle text-text-muted hover:text-text-primary transition-colors"
             title="Edit Lesson"
           >
             <Pencil className="w-4 h-4" />
@@ -196,15 +196,15 @@ export default function LessonViewerPage() {
 
         {/* Right Column: Table of Contents (Desktop only) */}
         {toc.length > 0 && (
-          <div className="hidden lg:flex flex-col w-64 xl:w-80 shrink-0 border-l border-white/5" style={{ background: 'var(--bg-surface)' }}>
-            <div className="p-5 flex items-center gap-2 border-b border-white/5">
+          <div className="hidden lg:flex flex-col w-64 xl:w-80 shrink-0 border-l border-ui-border" style={{ background: 'var(--bg-surface)' }}>
+            <div className="p-5 flex items-center gap-2 border-b border-ui-border">
               <List className="w-4 h-4 text-text-muted" />
               <h3 className="text-sm font-bold text-text-primary">Table of Contents</h3>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
               <div className="flex flex-col gap-2 relative">
                 {/* Active Indicator Line */}
-                <div className="absolute left-[7px] top-0 bottom-0 w-[2px] bg-white/5 rounded-full" />
+                <div className="absolute left-[7px] top-0 bottom-0 w-[2px] bg-ui-border rounded-full" />
                 
                 {toc.map(item => {
                   const isActive = activeId === item.id;
@@ -222,7 +222,7 @@ export default function LessonViewerPage() {
                         className={`text-left text-[13px] py-1.5 px-3 rounded-lg w-full transition-all duration-200 ${
                           isActive 
                             ? 'text-accent font-semibold bg-accent/5' 
-                            : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-subtle'
                         }`}
                       >
                         {item.text}
@@ -239,8 +239,8 @@ export default function LessonViewerPage() {
         {isTocOpen && (
           <div className="fixed inset-0 z-50 flex lg:hidden">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsTocOpen(false)} />
-            <div className="absolute right-0 top-0 bottom-0 w-[80%] max-w-sm bg-bg-surface border-l border-border flex flex-col shadow-2xl animate-in slide-in-from-right">
-              <div className="p-5 flex items-center justify-between border-b border-white/5">
+            <div className="absolute right-0 top-0 bottom-0 w-[80%] max-w-sm bg-bg-surface border-l border-ui-border flex flex-col shadow-2xl animate-in slide-in-from-right">
+              <div className="p-5 flex items-center justify-between border-b border-ui-border">
                 <div className="flex items-center gap-2">
                   <List className="w-4 h-4 text-text-muted" />
                   <h3 className="text-sm font-bold text-text-primary">Table of Contents</h3>
@@ -251,7 +251,7 @@ export default function LessonViewerPage() {
               </div>
               <div className="flex-1 overflow-y-auto p-5">
                 <div className="flex flex-col gap-2 relative">
-                  <div className="absolute left-[7px] top-0 bottom-0 w-[2px] bg-white/5 rounded-full" />
+                  <div className="absolute left-[7px] top-0 bottom-0 w-[2px] bg-ui-border rounded-full" />
                   {toc.map(item => {
                     const isActive = activeId === item.id;
                     return (

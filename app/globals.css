@@ -1,22 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --bg-base: #0b0f19;
-  --bg-surface: #111827;
-  --bg-card: #161d2e;
-  --bg-card-hover: #1c2438;
+  /* Light Mode (Default) */
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --bg-elevated: #ffffff;
+  --border: rgba(15, 23, 42, 0.06);
+  --border-strong: rgba(15, 23, 42, 0.1);
+  --accent: #059669;
+  --accent-dim: rgba(5, 150, 105, 0.1);
+  --accent-glow: 0 0 40px rgba(5, 150, 105, 0.15);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-on-accent: #ffffff;
+  --bg-subtle: rgba(0,0,0,0.05);
+  --danger: #ef4444;
+  --danger-dim: rgba(239, 68, 68, 0.1);
+  --success: #10b981;
+  --success-dim: rgba(16, 185, 129, 0.1);
+  --warning: #f59e0b;
+  --blue: #2563eb;
+  --blue-dim: rgba(37, 99, 235, 0.1);
+  --purple: #9333ea;
+  --purple-dim: rgba(147, 51, 234, 0.1);
+}
+
+.dark {
+  /* Dark Mode Overrides */
+  --bg-base: #0a0e17;
+  --bg-surface: #101623;
+  --bg-card: #151c2c;
+  --bg-card-hover: #1b2438;
   --bg-elevated: #1e2740;
-  --border: rgba(255,255,255,0.07);
-  --border-strong: rgba(255,255,255,0.13);
+  --border: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.1);
   --accent: #00d4aa;
   --accent-dim: #00d4aa22;
   --accent-glow: 0 0 40px rgba(0, 212, 170, 0.25);
   --text-primary: #f0f4ff;
   --text-secondary: #8895b3;
   --text-muted: #4a566e;
+  --text-on-accent: #0b0f19;
+  --bg-subtle: rgba(255,255,255,0.05);
   --danger: #ff4d6d;
+  --danger-dim: rgba(255, 77, 109, 0.12);
   --success: #00d4aa;
+  --success-dim: rgba(0, 212, 170, 0.12);
   --warning: #f59e0b;
+  --blue: #3b82f6;
+  --blue-dim: rgba(59, 130, 246, 0.12);
+  --purple: #a855f7;
+  --purple-dim: rgba(168, 85, 247, 0.12);
 }
 
 @theme inline {
@@ -24,10 +61,14 @@
   --color-bg-surface: var(--bg-surface);
   --color-bg-card: var(--bg-card);
   --color-bg-elevated: var(--bg-elevated);
+  --color-bg-subtle: var(--bg-subtle);
   --color-accent: var(--accent);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+  --color-ui-border: var(--border);
+  --color-ui-border-strong: var(--border-strong);
+  --color-subtle: var(--bg-subtle);
   --font-sans: 'Inter', system-ui, sans-serif;
 }
 
@@ -84,7 +125,7 @@ body {
   cursor: pointer;
 }
 .sidebar-icon:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--bg-subtle);
   color: var(--text-secondary);
 }
 .sidebar-icon.active {
@@ -94,9 +135,9 @@ body {
 
 /* Teal badge */
 .badge-teal {
-  background: rgba(0, 212, 170, 0.12);
+  background: var(--accent-dim);
   color: var(--accent);
-  border: 1px solid rgba(0, 212, 170, 0.25);
+  border: 1px solid var(--accent-dim);
   border-radius: 999px;
   font-size: 10px;
   font-weight: 700;
@@ -106,9 +147,9 @@ body {
 }
 
 .badge-blue {
-  background: rgba(59, 130, 246, 0.12);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid var(--blue-dim);
   border-radius: 999px;
   font-size: 10px;
   font-weight: 700;
@@ -118,9 +159,9 @@ body {
 }
 
 .badge-purple {
-  background: rgba(168, 85, 247, 0.12);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.25);
+  background: var(--purple-dim);
+  color: var(--purple);
+  border: 1px solid var(--purple-dim);
   border-radius: 999px;
   font-size: 10px;
   font-weight: 700;
@@ -132,7 +173,7 @@ body {
 /* Primary button */
 .btn-primary {
   background: var(--accent);
-  color: #0b0f19;
+  color: var(--text-on-accent);
   font-weight: 700;
   border-radius: 12px;
   border: none;
@@ -181,7 +222,7 @@ body {
 .lesson-content h2, 
 .lesson-content h3, 
 .lesson-content h4 {
-  color: #ffffff; /* Explicit white for headings */
+  color: var(--text-primary);
   font-weight: 700;
   line-height: 1.3;
   margin-top: 2em;
@@ -266,8 +307,8 @@ body {
 }
 
 .lesson-content code {
-  background: rgba(255,255,255,0.08);
-  color: #e879f9;
+  background: var(--border-strong);
+  color: var(--accent);
   padding: 0.2em 0.4em;
   border-radius: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -275,7 +316,7 @@ body {
 }
 
 .lesson-content pre {
-  background: #000000;
+  background: var(--bg-card);
   border: 1px solid var(--border-strong);
   padding: 1.25em;
   border-radius: 12px;

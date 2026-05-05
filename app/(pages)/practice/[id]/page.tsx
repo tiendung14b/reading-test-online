@@ -159,14 +159,14 @@ export default function PracticePage() {
                     height: '28px',
                     border: `1.5px solid ${
                       results
-                        ? (isCorrect ? 'rgba(0,212,170,0.6)' : 'rgba(255,77,109,0.6)')
-                        : 'rgba(255,255,255,0.2)'
+                        ? (isCorrect ? 'var(--success)' : 'var(--danger)')
+                        : 'var(--border-strong)'
                     }`,
                     background: results
-                      ? (isCorrect ? 'rgba(0,212,170,0.12)' : 'rgba(255,77,109,0.12)')
-                      : 'rgba(255,255,255,0.07)',
+                      ? (isCorrect ? 'var(--success-dim)' : 'var(--danger-dim)')
+                      : 'var(--bg-subtle)',
                     color: results
-                      ? (isCorrect ? '#00d4aa' : '#ff4d6d')
+                      ? (isCorrect ? 'var(--success)' : 'var(--danger)')
                       : answers[q.id] ? 'var(--text-primary)' : 'var(--text-muted)',
                     cursor: 'pointer',
                     outline: 'none',
@@ -191,9 +191,9 @@ export default function PracticePage() {
                   <Listbox.Options
                     className="absolute z-50 mt-1 rounded-xl overflow-hidden focus:outline-none"
                     style={{
-                      background: '#1a1f2e',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-strong)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
                       minWidth: '200px',
                       left: 0,
                     }}
@@ -204,19 +204,19 @@ export default function PracticePage() {
                           <li
                             className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
                             style={{
-                              background: active ? 'rgba(0,212,170,0.1)' : 'transparent',
-                              color: selected ? '#00d4aa' : active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                              background: active ? 'var(--accent-dim)' : 'transparent',
+                              color: selected ? 'var(--accent)' : active ? 'var(--text-primary)' : 'var(--text-secondary)',
                             }}
                           >
                             <span
                               className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-black shrink-0"
                               style={{
-                                background: selected ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
-                                color: selected ? '#0b0f19' : 'var(--text-muted)',
+                                background: selected ? 'var(--accent)' : 'var(--bg-subtle)',
+                                color: selected ? 'var(--text-on-accent)' : 'var(--text-muted)',
                               }}
                             >{label}</span>
                             <span className="text-[13px] flex-1">{text || `Option ${label}`}</span>
-                            {selected && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: '#00d4aa' }} />}
+                            {selected && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--accent)' }} />}
                           </li>
                         )}
                       </Listbox.Option>
@@ -227,7 +227,7 @@ export default function PracticePage() {
             </Listbox>
 
             {results && !isCorrect && detail && (
-              <span className="text-[11px] ml-1 font-semibold" style={{ color: '#00d4aa' }}>
+              <span className="text-[11px] ml-1 font-semibold" style={{ color: 'var(--success)' }}>
                 → {detail.correct_answer}
               </span>
             )}
@@ -310,7 +310,7 @@ export default function PracticePage() {
         >
           <button
             onClick={() => router.push('/')}
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-subtle"
             style={{ color: 'var(--text-muted)' }}
           >
             <ChevronLeft className="w-4.5 h-4.5" />
@@ -333,7 +333,7 @@ export default function PracticePage() {
             </button>
             <button
               onClick={() => router.push(`/edit/${id}`)}
-              className="p-1.5 rounded-lg text-text-muted hover:bg-white/5 hover:text-text-secondary transition-all"
+              className="p-1.5 rounded-lg text-text-muted hover:bg-subtle hover:text-text-secondary transition-all"
               title="Edit Exercise"
             >
               <Edit3 className="w-4 h-4" />
@@ -370,7 +370,7 @@ export default function PracticePage() {
               </span>
             </h2>
             {/* Progress bar */}
-            <div className="mt-2 h-1 w-40 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+            <div className="mt-2 h-1 w-40 rounded-full overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${progressPct}%`, background: 'var(--accent)' }}
@@ -384,8 +384,8 @@ export default function PracticePage() {
           <div
             className="mx-5 mt-5 p-5 rounded-2xl shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(0,212,170,0.15), rgba(0,119,255,0.1))',
-              border: '1px solid rgba(0,212,170,0.25)',
+              background: 'linear-gradient(135deg, var(--accent-dim), var(--blue-dim))',
+              border: '1px solid var(--accent-dim)',
             }}
           >
             <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>
@@ -457,7 +457,7 @@ export default function PracticePage() {
 
           {/* Vocabulary Section */}
           {vocab.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-white/5">
+            <div className="mt-8 pt-6 border-t border-ui-border">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted">Key Vocabulary</h3>
                 <button 
@@ -469,7 +469,7 @@ export default function PracticePage() {
               </div>
               <div className="grid grid-cols-1 gap-2">
                 {vocab.slice(0, 5).map(v => (
-                  <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-subtle border border-ui-border">
                     <div>
                       <p className="text-sm font-bold text-text-primary">{v.word}</p>
                       <p className="text-[10px] text-text-muted">{v.phonetic}</p>
@@ -480,7 +480,7 @@ export default function PracticePage() {
                 {vocab.length > 5 && (
                   <button 
                     onClick={() => router.push(`/practice/${id}/flashcards`)}
-                    className="p-3 rounded-xl border border-dashed border-white/10 text-xs text-text-muted hover:text-text-secondary hover:border-white/20 transition-all"
+                    className="p-3 rounded-xl border border-dashed border-border-strong text-xs text-text-muted hover:text-text-secondary hover:border-accent transition-all"
                   >
                     + {vocab.length - 5} more words. Practice with Flashcards →
                   </button>
@@ -503,7 +503,7 @@ export default function PracticePage() {
             >
               {submitting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-[#0b0f19]/30 border-t-[#0b0f19] rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin" />
                   Submitting...
                 </>
               ) : 'Submit Answers'}
@@ -515,7 +515,7 @@ export default function PracticePage() {
       {/* Mobile FABs */}
       <div className="md:hidden fixed bottom-24 right-5 flex flex-col gap-3 z-40">
         {exercise.type === 'reading' && showFab && (
-          <button onClick={() => setIsModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105" style={{ background: 'var(--accent)', color: '#0b0f19' }}>
+          <button onClick={() => setIsModalOpen(true)} className="w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105" style={{ background: 'var(--accent)', color: 'var(--text-on-accent)' }}>
             <BookOpen className="w-5 h-5" />
           </button>
         )}

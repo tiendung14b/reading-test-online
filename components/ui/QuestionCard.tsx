@@ -50,7 +50,7 @@ export default function QuestionCard({
         className="rounded-xl p-4"
         style={{
           background: 'var(--bg-card)',
-          border: `1px solid ${review.isCorrect ? 'rgba(0,212,170,0.3)' : 'rgba(255,77,109,0.3)'}`,
+          border: `1px solid ${review.isCorrect ? 'var(--success-dim)' : 'var(--danger-dim)'}`,
         }}
       >
         <div className="flex items-center justify-between mb-3">
@@ -62,15 +62,15 @@ export default function QuestionCard({
               <button
                 onClick={onAskAI}
                 className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
-                style={{ background: 'rgba(0,212,170,0.1)', color: '#00d4aa' }}
+                style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
               >
                 <Sparkles className="w-3 h-3" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Ask AI</span>
               </button>
             )}
             {review.isCorrect
-              ? <CheckCircle className="w-4 h-4" style={{ color: '#00d4aa' }} />
-              : <XCircle className="w-4 h-4" style={{ color: '#ff4d6d' }} />
+              ? <CheckCircle className="w-4 h-4" style={{ color: 'var(--success)' }} />
+              : <XCircle className="w-4 h-4" style={{ color: 'var(--danger)' }} />
             }
           </div>
         </div>
@@ -81,8 +81,8 @@ export default function QuestionCard({
           <span
             className="text-xs font-semibold px-2 py-0.5 rounded"
             style={{
-              background: review.isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)',
-              color: review.isCorrect ? '#00d4aa' : '#ff4d6d',
+              background: review.isCorrect ? 'var(--success-dim)' : 'var(--danger-dim)',
+              color: review.isCorrect ? 'var(--success)' : 'var(--danger)',
             }}
           >
             {userAnswer || '—'}{userOptText ? `. ${userOptText}` : ''}
@@ -94,7 +94,7 @@ export default function QuestionCard({
           <span className="text-[10px] font-bold uppercase tracking-widest w-16 shrink-0" style={{ color: 'var(--text-muted)' }}>Answer:</span>
           <span
             className="text-xs font-semibold px-2 py-0.5 rounded"
-            style={{ background: 'rgba(0,212,170,0.1)', color: '#00d4aa' }}
+            style={{ background: 'var(--success-dim)', color: 'var(--success)' }}
           >
             {correctAns}{correctOptText ? `. ${correctOptText}` : ''}
           </span>
@@ -111,14 +111,14 @@ export default function QuestionCard({
                   <span
                     className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-black shrink-0"
                     style={{
-                      background: isCorrectLabel ? 'var(--accent)' : isUser && !review.isCorrect ? '#ff4d6d' : 'rgba(255,255,255,0.04)',
-                      color: isCorrectLabel || (isUser && !review.isCorrect) ? '#0b0f19' : 'var(--text-muted)',
+                      background: isCorrectLabel ? 'var(--accent)' : isUser && !review.isCorrect ? 'var(--danger)' : 'var(--bg-subtle)',
+                      color: isCorrectLabel || (isUser && !review.isCorrect) ? 'var(--text-on-accent)' : 'var(--text-muted)',
                     }}
                   >{label}</span>
                   <span
                     className="text-[11px]"
                     style={{
-                      color: isCorrectLabel ? '#00d4aa' : isUser && !review.isCorrect ? '#ff4d6d' : 'var(--text-muted)',
+                      color: isCorrectLabel ? 'var(--success)' : isUser && !review.isCorrect ? 'var(--danger)' : 'var(--text-muted)',
                       fontWeight: isCorrectLabel || isUser ? 600 : 400,
                       textDecoration: isUser && !review.isCorrect ? 'line-through' : 'none',
                     }}
@@ -142,7 +142,7 @@ export default function QuestionCard({
         background: 'var(--bg-card)',
         border: `1px solid ${
           review
-            ? (review.isCorrect ? 'rgba(0,212,170,0.3)' : 'rgba(255,77,109,0.25)')
+            ? (review.isCorrect ? 'var(--success-dim)' : 'var(--danger-dim)')
             : 'var(--border)'
         }`,
       }}
@@ -154,7 +154,7 @@ export default function QuestionCard({
             <button
               onClick={onAskAI}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors"
-              style={{ background: 'rgba(0,212,170,0.1)', color: '#00d4aa', border: '1px solid rgba(0,212,170,0.2)' }}
+              style={{ background: 'var(--success-dim)', color: 'var(--success)', border: '1px solid var(--success-dim)' }}
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Ask AI</span>
@@ -162,8 +162,8 @@ export default function QuestionCard({
           )}
           {review && (
             review.isCorrect
-              ? <CheckCircle className="w-4 h-4" style={{ color: '#00d4aa' }} />
-              : <XCircle className="w-4 h-4" style={{ color: '#ff4d6d' }} />
+              ? <CheckCircle className="w-4 h-4" style={{ color: 'var(--success)' }} />
+              : <XCircle className="w-4 h-4" style={{ color: 'var(--danger)' }} />
           )}
         </div>
       </div>
@@ -183,8 +183,8 @@ export default function QuestionCard({
               <span
                 className="text-xs font-semibold px-2 py-0.5 rounded"
                 style={{
-                  background: review.isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)',
-                  color: review.isCorrect ? '#00d4aa' : '#ff4d6d',
+                  background: review.isCorrect ? 'var(--success-dim)' : 'var(--danger-dim)',
+                  color: review.isCorrect ? 'var(--success)' : 'var(--danger)',
                 }}
               >
                 {userAnswer || '—'}
@@ -202,8 +202,8 @@ export default function QuestionCard({
           )}
 
           {review && (
-            <div className="p-4 rounded-xl mt-3" style={{ background: review.isCorrect ? 'rgba(0,212,170,0.1)' : 'rgba(255,77,109,0.1)', border: `1px solid ${review.isCorrect ? 'rgba(0,212,170,0.2)' : 'rgba(255,77,109,0.2)'}` }}>
-               <p className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: review.isCorrect ? '#00d4aa' : '#ff4d6d' }}>
+            <div className="p-4 rounded-xl mt-3" style={{ background: review.isCorrect ? 'var(--success-dim)' : 'var(--danger-dim)', border: `1px solid ${review.isCorrect ? 'var(--success-dim)' : 'var(--danger-dim)'}` }}>
+               <p className="text-xs font-bold mb-2 uppercase tracking-widest" style={{ color: review.isCorrect ? 'var(--success)' : 'var(--danger)' }}>
                  {review.isCorrect ? 'Correct!' : (review.correction ? 'Feedback & Correction:' : 'Accepted Answers:')}
                </p>
                
@@ -239,19 +239,19 @@ export default function QuestionCard({
                 className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-150"
                 style={{
                   background: isCorrectOpt
-                    ? 'rgba(0,212,170,0.1)'
+                    ? 'var(--success-dim)'
                     : isWrongOpt
-                    ? 'rgba(255,77,109,0.1)'
+                    ? 'var(--danger-dim)'
                     : isSelected
-                    ? 'rgba(255,255,255,0.06)'
-                    : 'rgba(255,255,255,0.03)',
+                    ? 'var(--bg-card-hover)'
+                    : 'var(--bg-subtle)',
                   border: `1px solid ${
                     isCorrectOpt
-                      ? 'rgba(0,212,170,0.45)'
+                      ? 'var(--success)'
                       : isWrongOpt
-                      ? 'rgba(255,77,109,0.45)'
+                      ? 'var(--danger)'
                       : isSelected
-                      ? 'rgba(255,255,255,0.18)'
+                      ? 'var(--border-strong)'
                       : 'var(--border)'
                   }`,
                   cursor: (disabled || review) ? 'default' : 'pointer',
@@ -264,11 +264,11 @@ export default function QuestionCard({
                     background: isCorrectOpt
                       ? 'var(--accent)'
                       : isWrongOpt
-                      ? '#ff4d6d'
+                      ? 'var(--danger)'
                       : isSelected
-                      ? 'rgba(255,255,255,0.15)'
-                      : 'rgba(255,255,255,0.06)',
-                    color: isCorrectOpt || isWrongOpt ? '#0b0f19' : 'var(--text-muted)',
+                      ? 'var(--border-strong)'
+                      : 'var(--bg-subtle)',
+                    color: isCorrectOpt || isWrongOpt ? 'var(--text-on-accent)' : 'var(--text-muted)',
                   }}
                 >
                   {label}
@@ -277,9 +277,9 @@ export default function QuestionCard({
                   className="text-sm flex-1"
                   style={{
                     color: isCorrectOpt
-                      ? '#00d4aa'
+                      ? 'var(--success)'
                       : isWrongOpt
-                      ? '#ff4d6d'
+                      ? 'var(--danger)'
                       : isSelected
                       ? 'var(--text-primary)'
                       : 'var(--text-secondary)',
@@ -288,8 +288,8 @@ export default function QuestionCard({
                 >
                   {text || `Option ${label}`}
                 </span>
-                {isCorrectOpt && <CheckCircle className="w-4 h-4 shrink-0" style={{ color: '#00d4aa' }} />}
-                {isWrongOpt && <XCircle className="w-4 h-4 shrink-0" style={{ color: '#ff4d6d' }} />}
+                {isCorrectOpt && <CheckCircle className="w-4 h-4 shrink-0" style={{ color: 'var(--success)' }} />}
+                {isWrongOpt && <XCircle className="w-4 h-4 shrink-0" style={{ color: 'var(--danger)' }} />}
               </button>
             );
           })}

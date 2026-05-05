@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library, Sparkles } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function PagesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -94,7 +95,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
                 title={label}
                 onClick={() => { if (isMobile) setIsOpen(false); }}
                 className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${
-                  isActive ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-white/5 hover:text-text-secondary'
+                  isActive ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-subtle hover:text-text-secondary'
                 }`}
                 style={isActive ? {
                   background: 'rgba(0,212,170,0.12)',
@@ -113,18 +114,18 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* Bottom icons */}
-        <div className="flex flex-col gap-2 px-3 mt-auto border-t border-white/5 pt-4">
-          <button className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-white/5 hover:text-text-secondary transition-all group">
+        <div className="flex flex-col gap-2 px-3 mt-auto border-t border-ui-border pt-4">
+          <button className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-subtle hover:text-text-secondary transition-all group">
             <HelpCircle className="w-5 h-5 shrink-0" />
             {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Help Center</span>}
           </button>
-          <Link href="/tokens" onClick={() => { if (isMobile) setIsOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-white/5 hover:text-text-secondary transition-all group">
+          <Link href="/tokens" onClick={() => { if (isMobile) setIsOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-subtle hover:text-text-secondary transition-all group">
             <Settings className="w-5 h-5 shrink-0" />
             {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Settings & API Keys</span>}
           </Link>
           
           {/* User Profile */}
-          <div className={`mt-2 flex items-center gap-3 p-2 rounded-xl bg-white/5 ${!isOpen && !isMobile ? 'justify-center' : ''}`}>
+          <div className={`mt-2 flex items-center gap-3 p-2 rounded-xl bg-subtle ${!isOpen && !isMobile ? 'justify-center' : ''}`}>
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
               style={{
@@ -150,14 +151,15 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
         <header
           className="h-14 flex items-center px-4 shrink-0 gap-4"
           style={{
-            background: 'rgba(17,24,39,0.8)',
+            background: 'var(--bg-surface)',
+            opacity: 0.9,
             borderBottom: '1px solid var(--border)',
             backdropFilter: 'blur(12px)',
           }}
         >
           <button 
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2 rounded-lg hover:bg-white/5 text-text-secondary transition-colors"
+            className="p-2 rounded-lg hover:bg-subtle text-text-secondary transition-colors"
             title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
             <Menu className="w-5 h-5" />
@@ -172,9 +174,10 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <div
               className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              style={{ background: 'rgba(0,212,170,0.1)', color: 'var(--accent)', border: '1px solid rgba(0,212,170,0.2)' }}
+              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}
             >
               EngMaster.io
             </div>

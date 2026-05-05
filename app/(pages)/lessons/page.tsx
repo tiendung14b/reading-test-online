@@ -69,7 +69,7 @@ export default function LessonsPage() {
         <Link 
           href="/lessons/create"
           className="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg"
-          style={{ background: 'var(--accent)', color: '#0b0f19', border: '1px solid rgba(0, 212, 170, 0.4)' }}
+          style={{ background: 'var(--accent)', color: 'var(--text-on-accent)', border: '1px solid var(--accent-dim)' }}
         >
           <PlusCircle className="w-4.5 h-4.5" />
           <span>New Lesson</span>
@@ -82,7 +82,7 @@ export default function LessonsPage() {
         </div>
       ) : lessons.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center card-glass rounded-3xl p-10 text-center">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'var(--bg-subtle)' }}>
             <BookOpen className="w-8 h-8 text-text-muted" />
           </div>
           <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No Lessons Found</h3>
@@ -111,7 +111,7 @@ export default function LessonsPage() {
                       <h3 className="font-semibold leading-snug group-hover:text-accent transition-colors" style={{ color: 'var(--text-primary)' }}>
                         {lesson.title}
                       </h3>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
                         <BookOpen className="w-4 h-4" />
                       </div>
                     </div>
@@ -125,7 +125,7 @@ export default function LessonsPage() {
                     {/* Delete button (absolute positioned) */}
                     <button 
                       onClick={(e) => handleDelete(lesson.id, e)}
-                      className="absolute bottom-4 right-4 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-white/5 hover:bg-danger/10 text-text-muted hover:text-danger z-10"
+                      className="absolute bottom-4 right-4 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-subtle hover:bg-danger/10 text-text-muted hover:text-danger z-10"
                       title="Delete Lesson"
                     >
                       <Trash2 className="w-4 h-4" />

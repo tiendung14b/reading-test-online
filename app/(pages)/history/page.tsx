@@ -64,10 +64,10 @@ export default function HistoryPage() {
   // Removed getPageNumbers and getScoreColor as they are now in shared components
 
   const stats = [
-    { label: 'Total Attempts', value: overallStats.totalAttempts, icon: HistoryIcon, color: '#00d4aa' },
-    { label: 'Exercises Done', value: overallStats.exercisesDone, icon: BookOpen, color: '#60a5fa' },
-    { label: 'Average Score', value: overallStats.totalAttempts > 0 ? overallStats.averageScore + '%' : '0%', icon: Target, color: '#f59e0b' },
-    { label: 'Highest Score', value: overallStats.totalAttempts > 0 ? overallStats.highestScore + '%' : '0%', icon: Award, color: '#a78bfa' },
+    { label: 'Total Attempts', value: overallStats.totalAttempts, icon: HistoryIcon, color: 'var(--accent)', dim: 'var(--accent-dim)' },
+    { label: 'Exercises Done', value: overallStats.exercisesDone, icon: BookOpen, color: 'var(--blue)', dim: 'var(--blue-dim)' },
+    { label: 'Average Score', value: overallStats.totalAttempts > 0 ? overallStats.averageScore + '%' : '0%', icon: Target, color: 'var(--warning)', dim: 'rgba(245, 158, 11, 0.12)' },
+    { label: 'Highest Score', value: overallStats.totalAttempts > 0 ? overallStats.highestScore + '%' : '0%', icon: Award, color: 'var(--purple)', dim: 'var(--purple-dim)' },
   ];
 
   return (
@@ -93,6 +93,7 @@ export default function HistoryPage() {
             value={stat.value}
             icon={stat.icon}
             color={stat.color}
+            dim={stat.dim}
             loading={loading}
           />
         ))}
@@ -121,14 +122,14 @@ export default function HistoryPage() {
           {history.map((item) => (
             <div
               key={item.id}
-              className="card-glass rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4 transition-all duration-300 hover:border-strong"
+              className="card-glass rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4 transition-all duration-300 hover:border-ui-border-strong"
             >
               {/* Type Icon */}
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: item.type === 'reading' ? 'rgba(96, 165, 250, 0.1)' : 'rgba(0, 212, 170, 0.1)' }}
+                style={{ background: item.type === 'reading' ? 'var(--blue-dim)' : 'var(--accent-dim)' }}
               >
-                <FileText className="w-6 h-6" style={{ color: item.type === 'reading' ? '#60a5fa' : 'var(--accent)' }} />
+                <FileText className="w-6 h-6" style={{ color: item.type === 'reading' ? 'var(--blue)' : 'var(--accent)' }} />
               </div>
 
               {/* Title and Date */}
@@ -156,7 +157,7 @@ export default function HistoryPage() {
               {/* Action */}
               <Link
                 href={`/history/${item.id}`}
-                className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 hover:bg-accent hover:text-[#0b0f19] transition-all group shrink-0"
+                className="w-10 h-10 rounded-xl flex items-center justify-center bg-subtle hover:bg-accent text-text-muted hover:text-text-on-accent transition-all group shrink-0"
               >
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
               </Link>
