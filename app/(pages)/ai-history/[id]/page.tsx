@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Transition } from '@headlessui/react';
 import Link from 'next/link';
-import { ChevronLeft, Bot, User, Calendar, BookOpen, MessagesSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, Bot, User, Calendar, BookOpen, MessagesSquare, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import Loading from '@/components/ui/Loading';
 import { MarkdownText } from '@/components/ui/MarkdownText';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import toast from 'react-hot-toast';
 
 type Message = {
   id: string;
@@ -32,6 +34,8 @@ export default function AIHistoryDetailPage() {
   const [history, setHistory] = useState<ChatHistoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetch(`/api/ai/history/${params.id}`)
@@ -45,6 +49,25 @@ export default function AIHistoryDetailPage() {
         setLoading(false);
       });
   }, [params.id]);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/ai/history/${params.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Chat history deleted');
+        router.push('/ai-history');
+      } else {
+        toast.error('Failed to delete chat history');
+        setIsDeleting(false);
+        setShowDeleteConfirm(false);
+      }
+    } catch (err) {
+      toast.error('Error deleting chat history');
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   if (loading) return <Loading />;
   if (!history) return <div className="p-10 text-center">History not found</div>;
@@ -67,9 +90,18 @@ export default function AIHistoryDetailPage() {
             Session Details
           </h1>
         </div>
-        <div className="text-xs text-text-muted flex items-center gap-1">
-          <Calendar className="w-3 h-3" />
-          {new Date(history.created_at).toLocaleDateString()}
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex flex-col items-end mr-1 text-right">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Saved On</p>
+            <p className="text-xs font-semibold text-text-primary">{new Date(history.created_at).toLocaleDateString()}</p>
+          </div>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-text-muted hover:bg-danger/10 hover:text-danger transition-all border border-transparent hover:border-danger/20"
+            title="Delete Chat"
+          >
+            <Trash2 className="w-4.5 h-4.5" />
+          </button>
         </div>
       </div>
 
@@ -184,6 +216,16 @@ export default function AIHistoryDetailPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Delete Chat History"
+        message="Are you sure you want to delete this chat history? This action cannot be undone."
+        confirmText={isDeleting ? "Deleting..." : "Delete"}
+        variant="danger"
+      />
     </div>
   );
 }

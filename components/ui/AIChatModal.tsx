@@ -184,7 +184,7 @@ export default function AIChatModal({
     
     let displayTitle = '';
     if (exerciseTitle) {
-      displayTitle = `${exerciseTitle} | ${typeLabel} | ${questionLabel || 'General'}`;
+      displayTitle = `${typeLabel} | ${questionLabel || 'General'}`;
       if (qSnippet) displayTitle += ` ${qSnippet}`;
     } else {
       displayTitle = `${qSnippet ? qSnippet : ''}`;

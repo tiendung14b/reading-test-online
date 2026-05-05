@@ -18,7 +18,6 @@ type ChatHistory = {
 export default function AIHistoryPage() {
   const [histories, setHistories] = useState<ChatHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch('/api/ai/history')
@@ -33,28 +32,6 @@ export default function AIHistoryPage() {
       });
   }, []);
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    
-    try {
-      const res = await fetch(`/api/ai/history/${deleteId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setHistories(prev => prev.filter(h => h.id !== deleteId));
-        toast.success('Chat history deleted');
-      } else {
-        toast.error('Failed to delete chat history');
-      }
-    } catch (err) {
-      toast.error('Error deleting chat history');
-    } finally {
-      setDeleteId(null);
-    }
-  };
-
-  const confirmDelete = (id: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    setDeleteId(id);
-  };
 
   if (loading) return <Loading />;
 
@@ -93,42 +70,31 @@ export default function AIHistoryPage() {
               href={`/ai-history/${history.id}`}
               className="card-glass rounded-2xl p-5 flex items-center gap-4 transition-all hover:border-ui-border-strong group"
             >
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+              <div className="w-12 h-12 rounded-xl md:flex hidden items-center justify-center shrink-0" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
                 <MessagesSquare className="w-6 h-6" />
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/10 text-[9px] font-black uppercase tracking-wider text-accent border border-accent/10">
-                    <MessagesSquare className="w-2.5 h-2.5" />
-                    <span>Saved Chat</span>
-                  </div>
                   <span className="text-[11px] text-text-muted flex items-center gap-1 font-medium">
                     <Calendar className="w-3 h-3" />
                     {new Date(history.created_at).toLocaleDateString()}
                   </span>
                 </div>
-                <h3 className="text-sm sm:text-base font-bold text-text-primary group-hover:text-accent transition-colors leading-tight line-clamp-2">
+                <h3 className="text-sm sm:text-base font-bold text-text-primary group-hover:text-accent transition-colors leading-tight line-clamp-2 pr-10 sm:pr-0">
                   {history.title}
                 </h3>
                 {history.exercise_title && (
-                  <p className="text-[11px] text-text-muted flex items-center gap-1.5 mt-1 font-medium">
+                  <p className="text-[11px] text-text-muted flex items-center gap-1.5 mt-1 font-medium pr-10 sm:pr-0">
                     <BookOpen className="w-3 h-3 text-accent/60" />
                     <span className="truncate">{history.exercise_title}</span>
                   </p>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={(e) => confirmDelete(history.id, e)}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-text-muted hover:bg-danger/10 hover:text-danger transition-all"
-                  title="Delete History"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-subtle group-hover:bg-accent group-hover:text-on-accent transition-all">
-                  <ArrowRight className="w-5 h-5" />
+              <div className="md:block hidden">
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center bg-subtle group-hover:bg-accent group-hover:text-on-accent transition-all">
+                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
                 </div>
               </div>
             </Link>
@@ -136,15 +102,6 @@ export default function AIHistoryPage() {
         </div>
       )}
 
-      <ConfirmModal
-        isOpen={deleteId !== null}
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDelete}
-        title="Delete Chat History"
-        message="Are you sure you want to delete this chat history? This action cannot be undone."
-        confirmText="Delete"
-        variant="danger"
-      />
     </div>
   );
 }
