@@ -2,7 +2,9 @@
 
 import { Fragment, useState, useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { X, Send, Bot, User, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Send, Bot, User, Sparkles, ChevronDown, ChevronUp, Bookmark, History } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { MarkdownText } from './MarkdownText';
 
 export type ChatMessage = {
   id: string;
@@ -12,72 +14,12 @@ export type ChatMessage = {
   fullText?: string;
 };
 
-const MarkdownText = ({ content }: { content: string }) => {
-  if (!content) return null;
-  
-  // Split by headings (### text), bold (**text**), inline code (`text`), and list items
-  const lines = content.split('\n');
-  
-  return (
-    <div className="space-y-2">
-      {lines.map((line, idx) => {
-        if (!line.trim()) return <div key={idx} className="h-2" />;
-        
-        // Handle Headings (###)
-        if (line.startsWith('### ')) {
-          return (
-            <h4 key={idx} className="text-sm font-bold mt-3 mb-1" style={{ color: 'var(--accent)' }}>
-              {line.replace('### ', '')}
-            </h4>
-          );
-        }
-
-        // Handle List Items (- or *)
-        if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
-          const text = line.trim().replace(/^[-•]\s+/, '');
-          return (
-            <div key={idx} className="pl-4 flex gap-2">
-              <span className="shrink-0" style={{ color: 'var(--accent)' }}>•</span>
-              <span>{renderInline(text)}</span>
-            </div>
-          );
-        }
-
-        return <p key={idx}>{renderInline(line)}</p>;
-      })}
-    </div>
-  );
-};
-
-// Helper to render bold and code within a line
-const renderInline = (text: string) => {
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
-  return parts.map((part, i) => {
-    if (!part) return null;
-    
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-bold text-accent">{part.slice(2, -2)}</strong>;
-    }
-
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return <em key={i} className="italic text-text-secondary">{part.slice(1, -1)}</em>;
-    }
-    
-    if (part.startsWith('`') && part.endsWith('`')) {
-      return (
-        <code key={i} className="px-1.5 py-0.5 rounded font-mono text-[12px] bg-subtle text-accent border border-ui-border">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    
-    return <span key={i}>{part}</span>;
-  });
-};
-
 interface AIChatModalProps {
   isOpen: boolean;
   onClose: () => void;
+  exerciseId?: string | number;
+  exerciseTitle?: string;
+  exerciseType?: string;
   exerciseContext: string;
   questionLabel?: string;
   questionText?: string;
@@ -88,6 +30,9 @@ interface AIChatModalProps {
 export default function AIChatModal({ 
   isOpen, 
   onClose, 
+  exerciseId,
+  exerciseTitle,
+  exerciseType,
   exerciseContext,
   questionLabel,
   questionText,
@@ -230,6 +175,39 @@ export default function AIChatModal({
     }
   };
 
+  const handleSave = async () => {
+    if (messages.length <= 1 || isLoading) return;
+    
+    // Build a descriptive title
+    const typeLabel = exerciseType ? exerciseType.charAt(0).toUpperCase() + exerciseType.slice(1) : '';
+    const qSnippet = questionText ? (questionText.length > 30 ? questionText.substring(0, 30) + '...' : questionText) : '';
+    
+    let displayTitle = '';
+    if (exerciseTitle) {
+      displayTitle = `${exerciseTitle} | ${typeLabel} | ${questionLabel || 'General'}`;
+      if (qSnippet) displayTitle += `: ${qSnippet}`;
+    } else {
+      displayTitle = `${qSnippet ? `: ${qSnippet}` : ''}`;
+    }
+
+    const savePromise = fetch('/api/ai/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        exercise_id: exerciseId,
+        title: displayTitle,
+        context: exerciseContext,
+        messages: messages
+      }),
+    });
+
+    toast.promise(savePromise, {
+      loading: 'Saving chat...',
+      success: 'Chat saved successfully!',
+      error: 'Failed to save chat',
+    });
+  };
+
   return (
     <Transition.Root show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -276,14 +254,25 @@ export default function AIChatModal({
                             </p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          className="rounded-lg p-2 transition-colors hover:bg-white/5"
-                          style={{ color: 'var(--text-muted)' }}
-                          onClick={onClose}
-                        >
-                          <X className="h-5 w-5" aria-hidden="true" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {messages.length > 1 && (
+                            <button
+                              onClick={handleSave}
+                              className="rounded-lg p-2 transition-colors hover:bg-accent/10 text-accent"
+                              title="Save Conversation"
+                            >
+                              <Bookmark className="h-5 w-5" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="rounded-lg p-2 transition-colors hover:bg-white/5"
+                            style={{ color: 'var(--text-muted)' }}
+                            onClick={onClose}
+                          >
+                            <X className="h-5 w-5" aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Selected Question Context Display */}

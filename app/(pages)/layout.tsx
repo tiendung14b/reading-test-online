@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library, Sparkles } from 'lucide-react';
+import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library, Sparkles, MessagesSquare } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function PagesLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +31,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/history', icon: History, label: 'History' },
+    { href: '/ai-history', icon: MessagesSquare, label: 'AI Chatbox Archive' },
     { href: '/lessons', icon: Library, label: 'Lessons' },
     { href: '/ai-create', icon: Sparkles, label: 'AI Generator' },
     { href: '/create', icon: PlusCircle, label: 'Create Manual' },

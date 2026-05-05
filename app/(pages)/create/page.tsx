@@ -41,6 +41,7 @@ export default function CreateTest() {
   const [vocabulary, setVocabulary] = useState<VocabularyEntry[]>([]);
   const [bulkText, setBulkText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'form' | 'questions'>('form');
 
   // AI Modal States
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -278,12 +279,32 @@ D. Tokyo`;
 [3] | A. interest | B. interested | *C. interesting | D. interestingly`;
 
   return (
-    <div className="h-full flex" style={{ background: 'var(--bg-base)' }}>
+    <div className="h-full flex flex-col lg:flex-row" style={{ background: 'var(--bg-base)' }}>
+
+      {/* Mobile Tab Switcher */}
+      <div className="lg:hidden flex bg-bg-surface border-b border-ui-border shrink-0 sticky top-0 z-20">
+        <button
+          onClick={() => setActiveTab('form')}
+          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${
+            activeTab === 'form' ? 'border-accent text-accent' : 'border-transparent text-text-muted'
+          }`}
+        >
+          1. Content
+        </button>
+        <button
+          onClick={() => setActiveTab('questions')}
+          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${
+            activeTab === 'questions' ? 'border-accent text-accent' : 'border-transparent text-text-muted'
+          }`}
+        >
+          2. Questions ({questions.length})
+        </button>
+      </div>
 
       {/* Left — Form */}
-      <div className="flex-1 overflow-y-auto p-6 lg:p-10">
-        <div className="max-w-2xl">
-          <div className="flex items-center justify-between mb-8">
+      <div className={`flex-1 overflow-y-auto p-6 lg:p-10 ${activeTab !== 'form' ? 'hidden lg:block' : 'block'}`}>
+        <div className="max-w-3xl mx-auto lg:mx-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>Create</p>
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>New Exercise</h1>
@@ -297,7 +318,7 @@ D. Tokyo`;
                 }
                 setIsAiModalOpen(true);
               }}
-              className={`btn-primary px-4 py-2 text-sm flex items-center gap-2 rounded-xl shadow-lg transition-transform hover:scale-105 ${!hasTokens ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+              className={`btn-primary px-4 py-2.5 text-sm flex items-center justify-center gap-2 rounded-xl shadow-lg transition-transform hover:scale-105 ${!hasTokens ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
               style={{ background: 'linear-gradient(135deg, var(--accent) 0%, #00b894 100%)', color: '#0b0f19', border: 'none' }}
               title={!hasTokens ? "Hết lượt dùng AI. Bấm để nạp thêm." : "Tạo tự động bằng AI"}
             >
@@ -493,10 +514,11 @@ D. Tokyo`;
         </div>
       </div>
 
-      {/* Right — Questions Panel */}
       <div
-        className="w-80 xl:w-96 shrink-0 flex flex-col overflow-hidden"
-        style={{ background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)' }}
+        className={`w-full lg:w-80 xl:w-96 shrink-0 flex flex-col overflow-hidden border-l border-ui-border bg-bg-surface ${
+          activeTab !== 'questions' ? 'hidden lg:flex' : 'flex-1 min-h-0 lg:h-full'
+        }`}
+        style={{ borderColor: 'var(--border)' }}
       >
         {/* Panel header */}
         <div
@@ -518,7 +540,7 @@ D. Tokyo`;
         </div>
 
         {/* Questions list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-3">
           {questions.map((q, i) => (
             <div
               key={i}

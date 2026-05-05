@@ -539,6 +539,9 @@ export default function PracticePage() {
           <AIChatModal
             isOpen={!!activeChatQuestionId}
             onClose={() => setActiveChatQuestionId(null)}
+            exerciseId={id}
+            exerciseTitle={exercise.title}
+            exerciseType={exercise.type}
             exerciseContext={getExerciseContext(activeChatQuestionId)}
             questionLabel={exercise.type === 'cloze' ? `Blank [${qIdx + 1}]` : `Question ${qIdx + 1}`}
             questionText={q?.question_text || 'Fill in the blank'}

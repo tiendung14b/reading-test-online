@@ -44,6 +44,7 @@ export default function EditTest() {
   const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'form' | 'questions'>('form');
 
   useEffect(() => {
     fetch(`/api/practice/${id}`)
@@ -192,26 +193,46 @@ export default function EditTest() {
   return (
     <div className="h-full flex flex-col bg-bg-base">
       {/* Sticky Header */}
-      <header className="px-6 py-4 flex items-center justify-between bg-bg-surface/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-white/5 text-text-muted"><ChevronLeft className="w-5 h-5" /></button>
-          <div>
+      <header className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-bg-surface/80 backdrop-blur-md sticky top-0 z-10 shrink-0 border-b border-ui-border">
+        <div className="flex items-center gap-3 min-w-0">
+          <button onClick={() => router.back()} className="p-2 rounded-xl hover:bg-white/5 text-text-muted shrink-0"><ChevronLeft className="w-5 h-5" /></button>
+          <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-accent mb-0.5">Editing Exercise</p>
-            <h1 className="text-sm font-semibold text-text-primary line-clamp-1">{title || 'Loading...'}</h1>
+            <h1 className="text-sm font-semibold text-text-primary truncate">{title || 'Loading...'}</h1>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-end gap-3">
            <button onClick={handleDelete} className="px-4 py-2 text-xs font-bold text-danger hover:bg-danger/10 rounded-lg transition-all">Delete</button>
-           <button onClick={handleSubmit} disabled={saving} className="btn-primary px-6 py-2 text-xs flex items-center gap-2">
+           <button onClick={handleSubmit} disabled={saving} className="btn-primary px-6 py-2.5 text-xs flex items-center gap-2 rounded-xl shadow-lg shadow-accent/20">
              <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Changes'}
            </button>
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Mobile Tab Switcher */}
+        <div className="lg:hidden flex bg-bg-surface border-b border-ui-border shrink-0 sticky top-0 z-20">
+          <button
+            onClick={() => setActiveTab('form')}
+            className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${
+              activeTab === 'form' ? 'border-accent text-accent' : 'border-transparent text-text-muted'
+            }`}
+          >
+            1. Content
+          </button>
+          <button
+            onClick={() => setActiveTab('questions')}
+            className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${
+              activeTab === 'questions' ? 'border-accent text-accent' : 'border-transparent text-text-muted'
+            }`}
+          >
+            2. Questions ({questions.length})
+          </button>
+        </div>
+
         {/* Left Form */}
-        <div className="flex-1 overflow-y-auto p-6 lg:p-10">
-          <div className="max-w-3xl">
+        <div className={`flex-1 overflow-y-auto p-6 lg:p-10 ${activeTab !== 'form' ? 'hidden lg:block' : 'block'}`}>
+          <div className="max-w-3xl mx-auto lg:mx-0">
             {/* Type selector */}
             <div className="mb-8">
               <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block mb-4">Exercise Type</label>
@@ -286,12 +307,14 @@ export default function EditTest() {
         </div>
 
         {/* Right Questions Panel */}
-        <div className="w-96 shrink-0 bg-bg-surface flex flex-col border-l border-white/5">
+        <div className={`w-full lg:w-96 shrink-0 bg-bg-surface flex flex-col overflow-hidden border-l border-ui-border ${
+          activeTab !== 'questions' ? 'hidden lg:flex' : 'flex-1 min-h-0 lg:h-full'
+        }`}>
           <div className="p-5 flex items-center justify-between">
             <span className="text-sm font-bold text-text-primary">Questions ({questions.length})</span>
             <button onClick={handleAddQuestion} className="w-9 h-9 rounded-xl flex items-center justify-center bg-accent/10 text-accent border border-accent/20 transition-all hover:bg-accent/20"><Plus className="w-5 h-5" /></button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
             {questions.map((q, i) => (
               <div key={i} className="card-glass rounded-2xl p-5 border-white/5">
                 <div className="flex items-center justify-between mb-4">

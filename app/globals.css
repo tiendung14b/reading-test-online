@@ -70,6 +70,13 @@
   --color-ui-border: var(--border);
   --color-ui-border-strong: var(--border-strong);
   --color-subtle: var(--bg-subtle);
+  
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-blue: var(--blue);
+  --color-purple: var(--purple);
+
   --font-sans: 'Inter', system-ui, sans-serif;
 }
 
