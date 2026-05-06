@@ -19,7 +19,7 @@ export default function MobilePassageModal({
 }: MobilePassageModalProps) {
   return (
     <Transition show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50 md:hidden" onClose={onClose}>
+      <Dialog as="div" className="relative z-150 md:hidden" onClose={onClose}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-200"
