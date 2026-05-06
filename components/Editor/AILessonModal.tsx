@@ -19,7 +19,7 @@ const LESSON_TYPES = [
   { id: 'Vocabulary Building', label: 'Vocabulary List', icon: <Sparkles className="w-4 h-4" /> },
 ];
 
-const DIFFICULTY_LEVELS = ['Beginner', 'Elementary', 'Intermediate', 'Upper-Intermediate', 'Advanced', 'IELTS / TOEFL'];
+const DIFFICULTY_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'IELTS 5.0', 'IELTS 6.5', 'IELTS 7.5+'];
 
 export default function AILessonModal({ isOpen, onClose, onGenerate }: AILessonModalProps) {
   const [topic, setTopic] = useState('');

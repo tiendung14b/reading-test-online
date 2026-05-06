@@ -6,6 +6,7 @@ import { BookOpen, ChevronLeft, Save, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RichTextEditor from '@/components/Editor/RichTextEditor';
 import AILessonModal from '@/components/Editor/AILessonModal';
+import { injectHeadingIds } from '@/lib/lesson-utils';
 
 export default function CreateLessonPage() {
   const router = useRouter();
@@ -23,10 +24,11 @@ export default function CreateLessonPage() {
 
     setSaving(true);
     try {
+      const processedContent = injectHeadingIds(content);
       const res = await fetch('/api/lessons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, topic, content }),
+        body: JSON.stringify({ title, topic, content: processedContent }),
       });
       const data = await res.json();
       

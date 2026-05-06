@@ -6,6 +6,7 @@ import { BookOpen, PlusCircle, Clock, Trash2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AILessonModal from '@/components/Editor/AILessonModal';
 import { useRouter } from 'next/navigation';
+import { injectHeadingIds } from '@/lib/lesson-utils';
 
 type Lesson = {
   id: number;
@@ -53,10 +54,15 @@ export default function LessonsPage() {
   };
   const handleAIGenerated = async (lesson: { title: string; topic: string; content: string }) => {
     try {
+      const processedLesson = {
+        ...lesson,
+        content: injectHeadingIds(lesson.content)
+      };
+
       const res = await fetch('/api/lessons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(lesson),
+        body: JSON.stringify(processedLesson),
       });
 
       const data = await res.json();

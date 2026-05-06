@@ -134,7 +134,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
             </div>
             {(isOpen || isMobile) && (
               <div className="flex flex-col overflow-hidden">
-                <span className="text-sm font-black whitespace-nowrap text-text-primary">Tien Dung</span>
+                <span className="text-sm font-black whitespace-nowrap text-text-primary">Cún 💖</span>
                 <span className="text-[10px] text-accent font-black uppercase tracking-[0.15em]">Pro Student</span>
               </div>
             )}
@@ -182,7 +182,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto relative">
+        <main className="flex-1 overflow-auto relative" id="main-content-layout">
           <div className={`${isMobile ? 'pb-32' : 'pb-10'}`}>
             {children}
           </div>
