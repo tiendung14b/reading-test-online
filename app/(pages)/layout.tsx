@@ -48,15 +48,15 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
       {/* Sidebar Overlay for Mobile */}
       {isMobile && isOpen && (
         <div 
-          className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md transition-opacity"
+          className="fixed inset-0 z-[140] bg-black/60 backdrop-blur-md transition-opacity"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar - Hidden on mobile by default, only shown as drawer */}
       <aside
-        className={`flex flex-col py-5 shrink-0 z-[80] transition-all duration-500 ease-in-out ${
-          isMobile ? 'fixed inset-y-0 left-0 shadow-2xl' : 'relative'
+        className={`flex flex-col py-5 shrink-0 z-40 transition-all duration-500 ease-in-out ${
+          isMobile ? 'fixed inset-y-0 left-0 shadow-2xl z-[150]' : 'relative'
         } ${!isOpen && isMobile ? '-translate-x-full' : 'translate-x-0'} ${
           isMobile ? 'rounded-r-[2.5rem]' : ''
         }`}
@@ -68,7 +68,9 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
         }}
       >
         {/* Logo Section */}
-        <div className={`px-6 mb-10 flex items-center ${!isOpen && !isMobile ? 'justify-center' : 'justify-between'}`}>
+        <div className={`mb-10 flex items-center transition-all duration-300 ${
+          (isOpen || isMobile) ? 'px-6 justify-between' : 'px-0 justify-center'
+        }`}>
           <div className="flex items-center gap-3 overflow-hidden">
             <div
               className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shrink-0 shadow-lg shadow-accent/20"
@@ -89,7 +91,9 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Nav Items */}
-        <nav className="flex flex-col gap-2 px-4 flex-1 overflow-y-auto custom-scrollbar">
+        <nav className={`flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar transition-all duration-300 ${
+          (isOpen || isMobile) ? 'px-4' : 'px-2'
+        }`}>
           {navItems.map(({ href, icon: Icon, label }) => {
             const isActive = pathname === href;
             return (
@@ -98,8 +102,10 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
                 href={href}
                 title={label}
                 onClick={() => { if (isMobile) setIsOpen(false); }}
-                className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group ${
+                className={`flex items-center rounded-2xl transition-all duration-300 group ${
                   isActive ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-white/5 hover:text-text-primary'
+                } ${
+                  (isOpen || isMobile) ? 'px-4 py-4 gap-4' : 'mx-auto w-12 h-12 justify-center'
                 }`}
               >
                 <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'scale-110' : ''}`} />
@@ -114,12 +120,16 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* Bottom Section */}
-        <div className="px-4 mt-auto space-y-4">
+        <div className={`mt-auto space-y-4 transition-all duration-300 ${
+          (isOpen || isMobile) ? 'px-4' : 'px-2'
+        }`}>
           <div className="h-px bg-white/5 w-full" />
           
           {/* User Profile */}
-          <div className={`flex items-center gap-4 p-3 rounded-[1.5rem] bg-white/[0.03] border border-white/5 ${!isOpen && !isMobile ? 'justify-center' : ''}`}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center p-0.5 bg-accent/20 border border-accent/20 shrink-0">
+          <div className={`flex items-center rounded-[1.5rem] bg-white/[0.03] border border-white/5 transition-all duration-300 ${
+            (isOpen || isMobile) ? 'p-3 gap-4' : 'mx-auto w-12 h-12 justify-center p-0'
+          }`}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center p-0.5 bg-accent/20 border border-accent/20 shrink-0 overflow-hidden">
               <img src="https://i.pinimg.com/736x/57/fb/38/57fb388bf33d55c48684c2506f22a758.jpg" alt="avatar" className="w-full h-full rounded-full object-cover" />
             </div>
             {(isOpen || isMobile) && (
