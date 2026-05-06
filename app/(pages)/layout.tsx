@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library, Sparkles, MessagesSquare } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import BottomNav from '@/components/BottomNav';
 
 export default function PagesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,15 +31,16 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/history', icon: History, label: 'History' },
-    { href: '/ai-history', icon: MessagesSquare, label: 'AI Chatbox Archive' },
+    { href: '/history', icon: History, label: 'Practice History' },
+    { href: '/ai-history', icon: MessagesSquare, label: 'AI Chat History' },
     { href: '/lessons', icon: Library, label: 'Lessons' },
     { href: '/ai-create', icon: Sparkles, label: 'AI Generator' },
     { href: '/create', icon: PlusCircle, label: 'Create Manual' },
+    { href: '/tokens', icon: Settings, label: 'Settings & Tokens' },
   ];
 
   const sidebarWidth = isMobile 
-    ? (isOpen ? '240px' : '0px') 
+    ? '280px'
     : (isOpen ? '240px' : '72px');
 
   return (
@@ -46,16 +48,18 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
       {/* Sidebar Overlay for Mobile */}
       {isMobile && isOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md transition-opacity"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Hidden on mobile by default, only shown as drawer */}
       <aside
-        className={`flex flex-col py-5 shrink-0 z-50 transition-all duration-300 ease-in-out ${
+        className={`flex flex-col py-5 shrink-0 z-[80] transition-all duration-500 ease-in-out ${
           isMobile ? 'fixed inset-y-0 left-0 shadow-2xl' : 'relative'
-        } ${!isOpen && isMobile ? '-translate-x-full' : 'translate-x-0'}`}
+        } ${!isOpen && isMobile ? '-translate-x-full' : 'translate-x-0'} ${
+          isMobile ? 'rounded-r-[2.5rem]' : ''
+        }`}
         style={{
           width: sidebarWidth,
           background: 'var(--bg-surface)',
@@ -64,29 +68,28 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
         }}
       >
         {/* Logo Section */}
-        <div className={`px-4 mb-8 flex items-center ${!isOpen && !isMobile ? 'justify-center' : 'justify-between'}`}>
+        <div className={`px-6 mb-10 flex items-center ${!isOpen && !isMobile ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3 overflow-hidden">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'var(--accent)', boxShadow: '0 0 20px rgba(0,212,170,0.4)' }}
+              className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shrink-0 shadow-lg shadow-accent/20"
             >
-              <BookOpen className="w-5 h-5" style={{ color: '#0b0f19' }} />
+              <BookOpen className="w-5 h-5 text-on-accent" />
             </div>
             {(isOpen || isMobile) && (
-              <span className="font-bold text-lg tracking-tight whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
-                EngMaster
+              <span className="font-black text-xl tracking-tight whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+                EngMaster<span className="text-accent">.io</span>
               </span>
             )}
           </div>
           {isMobile && (
-            <button onClick={() => setIsOpen(false)} className="p-2 text-text-secondary hover:text-text-primary">
-              <X className="w-5 h-5" />
+            <button onClick={() => setIsOpen(false)} className="p-3 bg-white/5 rounded-2xl text-text-muted hover:text-text-primary">
+              <X className="w-6 h-6" />
             </button>
           )}
         </div>
 
         {/* Nav Items */}
-        <nav className="flex flex-col gap-2 px-3 flex-1">
+        <nav className="flex flex-col gap-2 px-4 flex-1 overflow-y-auto custom-scrollbar">
           {navItems.map(({ href, icon: Icon, label }) => {
             const isActive = pathname === href;
             return (
@@ -95,17 +98,13 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
                 href={href}
                 title={label}
                 onClick={() => { if (isMobile) setIsOpen(false); }}
-                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${
-                  isActive ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-subtle hover:text-text-secondary'
+                className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group ${
+                  isActive ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-white/5 hover:text-text-primary'
                 }`}
-                style={isActive ? {
-                  background: 'rgba(0,212,170,0.12)',
-                  color: 'var(--accent)',
-                } : {}}
               >
-                <Icon className="w-5 h-5 shrink-0" />
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'scale-110' : ''}`} />
                 {(isOpen || isMobile) && (
-                  <span className="font-medium whitespace-nowrap transition-opacity duration-300">
+                  <span className={`font-bold text-sm whitespace-nowrap transition-all duration-300 ${isActive ? 'translate-x-1' : ''}`}>
                     {label}
                   </span>
                 )}
@@ -114,81 +113,73 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        {/* Bottom icons */}
-        <div className="flex flex-col gap-2 px-3 mt-auto border-t border-ui-border pt-4">
-          <button className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-subtle hover:text-text-secondary transition-all group">
-            <HelpCircle className="w-5 h-5 shrink-0" />
-            {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Help Center</span>}
-          </button>
-          <Link href="/tokens" onClick={() => { if (isMobile) setIsOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl text-text-muted hover:bg-subtle hover:text-text-secondary transition-all group">
-            <Settings className="w-5 h-5 shrink-0" />
-            {(isOpen || isMobile) && <span className="font-medium whitespace-nowrap">Settings & API Keys</span>}
-          </Link>
+        {/* Bottom Section */}
+        <div className="px-4 mt-auto space-y-4">
+          <div className="h-px bg-white/5 w-full" />
           
           {/* User Profile */}
-          <div className={`mt-2 flex items-center gap-3 p-2 rounded-xl bg-subtle ${!isOpen && !isMobile ? 'justify-center' : ''}`}>
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, #00d4aa, #0077ff)',
-                color: '#fff',
-              }}
-            >
-              <img src="https://i.pinimg.com/736x/57/fb/38/57fb388bf33d55c48684c2506f22a758.jpg" alt="avatar" className="w-9 h-9 rounded-full" />
+          <div className={`flex items-center gap-4 p-3 rounded-[1.5rem] bg-white/[0.03] border border-white/5 ${!isOpen && !isMobile ? 'justify-center' : ''}`}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center p-0.5 bg-accent/20 border border-accent/20 shrink-0">
+              <img src="https://i.pinimg.com/736x/57/fb/38/57fb388bf33d55c48684c2506f22a758.jpg" alt="avatar" className="w-full h-full rounded-full object-cover" />
             </div>
             {(isOpen || isMobile) && (
               <div className="flex flex-col overflow-hidden">
-                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>Tien Dung</span>
-                <span className="text-[10px] text-text-muted uppercase tracking-wider">Pro Plan</span>
+                <span className="text-sm font-black whitespace-nowrap text-text-primary">Tien Dung</span>
+                <span className="text-[10px] text-accent font-black uppercase tracking-[0.15em]">Pro Student</span>
               </div>
             )}
           </div>
         </div>
       </aside>
 
-      {/* Main */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Top Bar */}
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
+        {/* Top Header */}
         <header
-          className="h-14 flex items-center px-4 shrink-0 gap-4"
+          className="h-16 flex items-center px-6 shrink-0 gap-4 z-30"
           style={{
             background: 'var(--bg-surface)',
-            opacity: 0.9,
             borderBottom: '1px solid var(--border)',
-            backdropFilter: 'blur(12px)',
+            backdropFilter: 'blur(20px)',
           }}
         >
-          <button 
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-2 rounded-lg hover:bg-subtle text-text-secondary transition-colors"
-            title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          {!isMobile && (
+            <button 
+              onClick={() => setIsOpen(!isOpen)}
+              className="p-2.5 rounded-xl hover:bg-white/5 text-text-muted transition-all active:scale-95"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
 
           <div className="flex-1 flex items-center gap-3">
-            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-sm font-black uppercase tracking-widest text-text-muted">
               {pathname === '/' ? 'Dashboard' : 
-               pathname.startsWith('/history') ? 'Practice History' :
-               pathname === '/create' ? 'Create Exercise' : 
-               'Practice Mode'}
-            </span>
+               pathname.startsWith('/history') ? 'Archive' :
+               pathname === '/create' ? 'Creator' : 
+               'Platform'}
+            </h2>
           </div>
-          <div className="flex items-center gap-3">
+
+          <div className="flex items-center gap-4">
             <ThemeToggle />
             <div
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}
+              className="hidden sm:block text-[10px] font-black px-4 py-2 rounded-xl bg-accent/10 text-accent border border-accent/20 uppercase tracking-[0.2em]"
             >
-              EngMaster.io
+              EngMaster
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-auto">
-          {children}
+        {/* Content */}
+        <main className="flex-1 overflow-auto relative">
+          <div className={`${isMobile ? 'pb-32' : 'pb-10'}`}>
+            {children}
+          </div>
         </main>
+
+        {/* Bottom Navigation for Mobile */}
+        <BottomNav onMenuClick={() => setIsOpen(true)} />
       </div>
     </div>
   );
