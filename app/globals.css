@@ -239,19 +239,19 @@ body {
 }
 
 .lesson-content h1 {
-  font-size: 2.25em;
+  font-size: 1.85em;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border-strong);
 }
 
 .lesson-content h2 {
-  font-size: 1.75em;
+  font-size: 1.55em;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border);
 }
 
 .lesson-content h3 {
-  font-size: 1.35em;
+  font-size: 1.25em;
 }
 
 .lesson-content p {
@@ -316,31 +316,59 @@ body {
 }
 
 .lesson-content code {
-  background: var(--border-strong);
+  background: rgba(0, 212, 170, 0.1);
   color: var(--accent);
   padding: 0.2em 0.4em;
   border-radius: 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.85em;
+  border: 1px solid rgba(0, 212, 170, 0.2);
 }
 
 .lesson-content pre {
-  background: var(--bg-card);
+  background: #0d1117;
   border: 1px solid var(--border-strong);
-  padding: 1.25em;
-  border-radius: 12px;
-  overflow-x: auto;
-  margin: 2em 0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  padding: 1.5em;
+  border-radius: 16px;
+  margin: 2.5em 0;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+  position: relative;
+  white-space: pre-wrap;       /* Support line wrapping */
+  word-break: break-all;      /* Support breaking long words */
+}
+
+.lesson-content pre::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
 }
 
 .lesson-content pre code {
   background: transparent;
-  color: #a5b4fc;
+  color: #e6edf3;
   padding: 0;
   font-size: 0.9em;
   border-radius: 0;
+  border: none;
+  line-height: 1.7;
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
+
+/* Syntax Highlighting (hljs) */
+.hljs-comment, .hljs-quote { color: #8b949e; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag { color: #ff7b72; }
+.hljs-string, .hljs-doctag, .hljs-regexp, .hljs-attr, .hljs-template-tag, .hljs-template-variable, .hljs-addition, .hljs-literal { color: #a5d6ff; }
+.hljs-title, .hljs-section, .hljs-type, .hljs-name, .hljs-selector-id, .hljs-selector-class { color: #d2a8ff; font-weight: bold; }
+.hljs-variable, .hljs-template-variable, .hljs-tag, .hljs-name { color: #ffa657; }
+.hljs-function, .hljs-attribute, .hljs-number { color: #79c0ff; }
+.hljs-params, .hljs-char { color: #e6edf3; }
+.hljs-builtin-name, .hljs-bullet, .hljs-symbol { color: #79c0ff; }
 
 .lesson-content table {
   width: 100%;
@@ -444,3 +472,34 @@ body {
 .duration-500 { animation-duration: 500ms; }
 .delay-150 { animation-delay: 150ms; }
 .fill-mode-both { animation-fill-mode: both; }
+
+/* Tiptap Editor Styles */
+.ProseMirror {
+  outline: none !important;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Tiptap Code Block Styles */
+.ProseMirror pre {
+  background: #0f172a !important;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin: 1.5rem 0;
+}
+
+.ProseMirror code {
+  background: none !important;
+  padding: 0 !important;
+}
+
+/* Tiptap Selection */
+.ProseMirror *::selection {
+  background-color: var(--accent-dim);
+}

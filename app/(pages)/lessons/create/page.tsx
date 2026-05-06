@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Save } from 'lucide-react';
+import { BookOpen, ChevronLeft, Save, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
+import RichTextEditor from '@/components/Editor/RichTextEditor';
+import AILessonModal from '@/components/Editor/AILessonModal';
 
 export default function CreateLessonPage() {
   const router = useRouter();
@@ -11,6 +13,7 @@ export default function CreateLessonPage() {
   const [topic, setTopic] = useState('');
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const handleSave = async () => {
     if (!title || !topic || !content) {
@@ -40,82 +43,124 @@ export default function CreateLessonPage() {
     }
   };
 
+  const handleAIGenerated = (lesson: { title: string; topic: string; content: string }) => {
+    setTitle(lesson.title);
+    setTopic(lesson.topic);
+    setContent(lesson.content);
+  };
+
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden bg-bg-base">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-white/5" style={{ background: 'var(--bg-surface)' }}>
-        <div className="flex items-center gap-4">
+      <div className="sticky top-0 z-20 flex items-center justify-between px-4 md:px-6 py-4 border-b border-white/5 bg-bg-surface/80 backdrop-blur-md">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/5 transition-all active:scale-95"
             style={{ color: 'var(--text-muted)' }}
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Create New Lesson</h1>
+          <div>
+            <h1 className="text-base md:text-lg font-bold text-text-primary">Create Lesson</h1>
+            <p className="text-[10px] uppercase tracking-wider text-text-muted font-bold hidden md:block">New Educational Material</p>
+          </div>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary flex items-center gap-2 px-4 py-2 text-sm rounded-xl"
-        >
-          {saving ? (
-            <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          <span>Save Lesson</span>
-        </button>
+        
+        <div className="flex items-center gap-2 md:gap-3">
+          <button
+            onClick={() => setAiModalOpen(true)}
+            className="flex items-center gap-2 px-3 md:px-4 py-2 text-xs md:text-sm rounded-xl transition-all border border-accent/20 bg-accent/5 text-accent hover:bg-accent/10 active:scale-95"
+          >
+            <Sparkles className="w-4 h-4 md:w-5 h-5" />
+            <span className="hidden sm:inline">Generate with AI</span>
+            <span className="sm:hidden">AI</span>
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary flex items-center gap-2 px-4 md:px-6 py-2 text-xs md:text-sm rounded-xl active:scale-95 shadow-lg shadow-accent/20"
+          >
+            {saving ? (
+              <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 md:w-5 h-5" />
+            )}
+            <span>{saving ? 'Saving...' : 'Save'}</span>
+          </button>
+        </div>
       </div>
 
+      <AILessonModal 
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onGenerate={handleAIGenerated}
+      />
+
       {/* Editor Content */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-8">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Title */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                Lesson Title
+          {/* Settings Section */}
+          <section className="p-6 md:p-8 rounded-3xl border border-white/5 bg-bg-surface/50 backdrop-blur-sm space-y-8">
+            <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-text-secondary">Lesson Info</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Title */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-text-muted px-1">
+                  Lesson Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Introduction to React"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  className="input-dark w-full px-5 py-4 text-base bg-white/[0.02] border-white/5 focus:bg-white/[0.05]"
+                />
+              </div>
+              
+              {/* Topic */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-text-muted px-1">
+                  Topic / Category
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Frontend Development"
+                  value={topic}
+                  onChange={e => setTopic(e.target.value)}
+                  className="input-dark w-full px-5 py-4 text-base bg-white/[0.02] border-white/5 focus:bg-white/[0.05]"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Content Editor Section */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-text-muted">
+                Detailed Content
               </label>
-              <input
-                type="text"
-                placeholder="e.g., Introduction to React"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                className="input-dark w-full px-4 py-3"
-              />
+              <div className="text-[10px] font-medium text-text-muted flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Auto-saving draft
+              </div>
             </div>
             
-            {/* Topic */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                Topic / Category
-              </label>
-              <input
-                type="text"
-                placeholder="e.g., Frontend Development"
-                value={topic}
-                onChange={e => setTopic(e.target.value)}
-                className="input-dark w-full px-4 py-3"
-              />
-            </div>
-          </div>
-
-          {/* HTML Content */}
-          <div className="space-y-2 flex-1 flex flex-col h-[600px]">
-            <label className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-              HTML Content
-            </label>
-            <textarea
-              placeholder="Paste your HTML content here (<h1>, <p>, <code>, etc.)..."
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              className="input-dark w-full flex-1 p-4 font-mono text-sm resize-none"
-              style={{ lineHeight: '1.6' }}
+            <RichTextEditor
+              content={content}
+              onChange={setContent}
+              placeholder="Start building your lesson content with the tools above..."
             />
-          </div>
+          </section>
 
+          <div className="h-20 md:hidden" /> {/* Spacer for mobile */}
         </div>
       </div>
     </div>

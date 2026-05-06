@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, PlusCircle, Clock, Trash2 } from 'lucide-react';
+import { BookOpen, PlusCircle, Clock, Trash2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
+import AILessonModal from '@/components/Editor/AILessonModal';
+import { useRouter } from 'next/navigation';
 
 type Lesson = {
   id: number;
@@ -15,6 +17,8 @@ type Lesson = {
 export default function LessonsPage() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const router = useRouter();
 
   const fetchLessons = () => {
     fetch('/api/lessons')
@@ -47,6 +51,26 @@ export default function LessonsPage() {
       toast.error('Failed to delete lesson');
     }
   };
+  const handleAIGenerated = async (lesson: { title: string; topic: string; content: string }) => {
+    try {
+      const res = await fetch('/api/lessons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lesson),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Lesson created successfully');
+        fetchLessons();
+        router.refresh();
+      } else {
+        toast.error(data.error || 'Failed to create lesson');
+      }
+    } catch (err) {
+      toast.error('Failed to create lesson');
+    }
+  };
 
   // Group lessons by topic
   const groupedLessons = lessons.reduce((acc, lesson) => {
@@ -66,15 +90,30 @@ export default function LessonsPage() {
             Browse and read educational materials, tutorials, and notes.
           </p>
         </div>
-        <Link 
-          href="/lessons/create"
-          className="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg"
-          style={{ background: 'var(--accent)', color: 'var(--text-on-accent)', border: '1px solid var(--accent-dim)' }}
-        >
-          <PlusCircle className="w-4.5 h-4.5" />
-          <span>New Lesson</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsAIModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg font-bold bg-white/5 border border-white/5 hover:bg-white/10 active:scale-95"
+          >
+            <Sparkles className="w-4.5 h-4.5 text-accent" />
+            <span>Generate with AI</span>
+          </button>
+          <Link 
+            href="/lessons/create"
+            className="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg font-bold"
+            style={{ background: 'var(--accent)', color: 'var(--text-on-accent)', border: '1px solid var(--accent-dim)' }}
+          >
+            <PlusCircle className="w-4.5 h-4.5" />
+            <span>New Lesson</span>
+          </Link>
+        </div>
       </div>
+
+      <AILessonModal 
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        onGenerate={handleAIGenerated}
+      />
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
@@ -94,7 +133,7 @@ export default function LessonsPage() {
           </Link>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto pr-2 space-y-10">
+        <div className="flex-1 overflow-y-auto space-y-10">
           {Object.entries(groupedLessons).map(([topic, topicLessons]) => (
             <div key={topic} className="space-y-4">
               <h2 className="text-lg font-bold tracking-tight border-b pb-2" style={{ color: 'var(--text-primary)', borderColor: 'var(--border)' }}>

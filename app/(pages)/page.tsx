@@ -68,7 +68,7 @@ export default function Home() {
     <div className="p-6 max-w-7xl mx-auto">
 
       {/* Header */}
-      <div className="flex items-end justify-between mb-8">
+      {/* <div className="flex items-end justify-between mb-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>
             Overview
@@ -77,7 +77,7 @@ export default function Home() {
             Your Exercises
           </h1>
         </div>
-      </div>
+      </div> */}
 
 
 

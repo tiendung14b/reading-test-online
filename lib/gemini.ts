@@ -9,9 +9,9 @@ async function getAvailableTokens() {
   const tokens = result.rows;
   
   const today = new Date().toISOString().split('T')[0];
-  let available = [];
+  const available = [];
   
-  for (let token of tokens) {
+  for (const token of tokens) {
     let usage = token.usage_count;
     if (token.last_access_date !== today) {
       // Reset usage if it's a new day
@@ -29,14 +29,14 @@ async function getAvailableTokens() {
   return available;
 }
 
-async function executeWithTokenRotation(action: (ai: GoogleGenAI) => Promise<any>) {
+async function executeWithTokenRotation(action: (ai: GoogleGenAI) => Promise<unknown>) {
   const availableTokens = await getAvailableTokens();
   
   if (availableTokens.length === 0) {
     throw new Error('NO_TOKENS_AVAILABLE');
   }
 
-  for (let tokenObj of availableTokens) {
+  for (const tokenObj of availableTokens) {
     try {
       const ai = new GoogleGenAI({ apiKey: tokenObj.token as string });
       const result = await action(ai);
@@ -49,8 +49,9 @@ async function executeWithTokenRotation(action: (ai: GoogleGenAI) => Promise<any
       });
 
       return result;
-    } catch (err: any) {
-      console.error(`Token ${tokenObj.id} failed:`, err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error(`Token ${tokenObj.id} failed:`, errorMessage);
       // If it's the last token, throw
       if (tokenObj === availableTokens[availableTokens.length - 1]) {
         throw new Error('ALL_TOKENS_FAILED');
@@ -202,7 +203,7 @@ Dựa vào thông tin bài tập trên, hãy trả lời câu hỏi của học 
     // If history is empty, we prepend systemPrompt to the new message.
     // If history is not empty, we need to ensure the first message contains the systemPrompt.
     
-    let contents = [];
+    const contents = [];
     
     if (history.length === 0) {
       contents.push({ role: 'user', parts: [{ text: systemPrompt + '\n\nCâu hỏi của học sinh: ' + message }] });
@@ -232,6 +233,70 @@ Dựa vào thông tin bài tập trên, hãy trả lời câu hỏi của học 
       });
     } catch (error) {
       console.error("Lỗi khi chat với AI:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Tạo nội dung bài học (Lesson) bằng AI
+   * @param topic Chủ đề bài học
+   * @param lessonType Loại bài học (Ví dụ: Viết thư, Làm văn, Đọc hiểu, Ngữ pháp...)
+   * @param difficulty Mức độ (Cơ bản, Nâng cao, B1, IELTS...)
+   * @param instructions Các yêu cầu bổ sung khác
+   * @param language Ngôn ngữ của bài giảng (Vietnamese hoặc English)
+   * @returns JSON chứa title, topic và content (HTML)
+   */
+  async generateLessonContent(topic: string, lessonType: string, difficulty: string, instructions: string = '', language: string = 'Vietnamese') {
+    const prompt = `
+Bạn là một chuyên gia soạn giáo trình tiếng Anh chuyên nghiệp. Hãy soạn một bài học chất lượng cao bằng ngôn ngữ ${language} dựa trên các thông tin sau:
+- Chủ đề: ${topic}
+- Loại bài học: ${lessonType}
+- Mức độ: ${difficulty}
+- Ngôn ngữ giảng dạy chính: ${language}
+${instructions ? `- Yêu cầu cụ thể: ${instructions}` : ''}
+
+Yêu cầu về nội dung:
+1. Toàn bộ bài giảng (giải thích, hướng dẫn, phân tích) phải được viết bằng ${language}. Tuy nhiên, các ví dụ, từ vựng, bài mẫu (nếu là tiếng Anh) thì phải giữ nguyên tiếng Anh kèm theo dịch nghĩa/giải thích bằng ${language} nếu cần.
+2. Nội dung phải chuyên sâu, trình bày khoa học và dễ hiểu.
+2. Nếu là dạng bài viết (Thư, Essay), hãy bao gồm:
+   - Cấu trúc (Structure) của dạng bài đó.
+   - Các từ vựng/mẫu câu hữu ích (Useful language).
+   - Một bài mẫu hoàn chỉnh (Model answer/Sample).
+3. Nếu là dạng kiến thức (Ngữ pháp, Reading), hãy bao gồm các phần giải thích rõ ràng kèm ví dụ minh họa.
+
+Yêu cầu về định dạng:
+- TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON CHÍNH XÁC (không có markdown code block).
+- Trường 'content' phải là nội dung HTML hoàn chỉnh, sử dụng các thẻ:
+  - <h1>, <h2>, <h3> cho các tiêu đề.
+  - <p> cho đoạn văn.
+  - <ul>, <li> cho danh sách.
+  - <blockquote> cho các ghi chú hoặc lời khuyên quan trọng.
+  - <b> hoặc <i> cho các từ vựng hoặc cấu trúc ngắn.
+  - <table> nếu cần so sánh hoặc liệt kê có cấu trúc.
+- Nội dung HTML phải ĐẸP và CHUẨN tiptap để hiển thị trực tiếp.
+
+Cấu trúc JSON:
+{
+  "title": "<Tiêu đề bài học hấp dẫn>",
+  "topic": "${topic}",
+  "content": "<Nội dung HTML hoàn chỉnh>"
+}
+`;
+
+    try {
+      return await executeWithTokenRotation(async (ai) => {
+        const response = await ai.models.generateContent({
+          model: CHEAPEST_MODEL,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.8,
+          }
+        });
+        return JSON.parse(response.text || '{}');
+      });
+    } catch (error) {
+      console.error("Lỗi khi tạo bài học bằng AI:", error);
       throw error;
     }
   }
