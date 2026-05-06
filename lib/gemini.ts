@@ -203,7 +203,7 @@ Dựa vào thông tin bài tập trên, hãy trả lời câu hỏi của học 
     // If history is empty, we prepend systemPrompt to the new message.
     // If history is not empty, we need to ensure the first message contains the systemPrompt.
     
-    const contents = [];
+    const contents: { role: string; parts: { text: string }[] }[] = [];
     
     if (history.length === 0) {
       contents.push({ role: 'user', parts: [{ text: systemPrompt + '\n\nCâu hỏi của học sinh: ' + message }] });
