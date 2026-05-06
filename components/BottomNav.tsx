@@ -22,9 +22,16 @@ export default function BottomNav({ onMenuClick }: BottomNavProps) {
   ];
 
   return (
-    <div className="fixed bottom-8 left-0 right-0 z-[60] px-6 lg:hidden pointer-events-none">
+    <div className="fixed bottom-5 left-0 right-0 z-[60] px-6 lg:hidden pointer-events-none">
       <div className="max-w-[400px] mx-auto relative pointer-events-auto">
-        <div className="flex items-center justify-around bg-[#0b0f19]/90 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] px-2 py-3 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)]">
+        <div 
+          className="flex items-center justify-around backdrop-blur-2xl border rounded-[2.5rem] px-2 py-3 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)]"
+          style={{
+            background: 'var(--bg-surface)',
+            opacity: 0.95,
+            borderColor: 'var(--border)'
+          }}
+        >
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = item.href ? pathname === item.href : false;
@@ -37,15 +44,17 @@ export default function BottomNav({ onMenuClick }: BottomNavProps) {
                     className={`absolute -top-10 w-14 h-14 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-2xl ${
                       isActive 
                         ? 'bg-accent text-on-accent' 
-                        : 'bg-[#0f172a] text-accent border-[6px] border-[#0b0f19]'
+                        : 'text-accent border-[6px]'
                     }`}
                     style={{
+                      background: isActive ? 'var(--accent)' : 'var(--bg-elevated)',
+                      borderColor: 'var(--bg-surface)',
                       boxShadow: isActive 
                         ? '0 10px 30px rgba(0,212,170,0.4), inset 0 0 15px rgba(255,255,255,0.2)' 
-                        : '0 15px 30px rgba(0,0,0,0.6)'
+                        : '0 15px 30px rgba(0,0,0,0.2)'
                     }}
                   >
-                    <Icon className="w-8 h-8" />
+                    <Icon className="w-7 h-7" />
                   </Link>
                 </div>
               );
