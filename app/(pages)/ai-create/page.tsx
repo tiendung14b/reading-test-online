@@ -191,7 +191,7 @@ export default function AiCreatePage() {
                 <input
                   type="range"
                   min="3"
-                  max="20"
+                  max="40"
                   value={numQuestions}
                   onChange={(e) => setNumQuestions(parseInt(e.target.value))}
                   className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent"
