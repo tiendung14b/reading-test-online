@@ -31,6 +31,7 @@ interface Field {
   label: string;
   type: string;
   options?: string;
+  optionsArray?: string[];
 }
 
 interface LogEntry {
@@ -88,7 +89,7 @@ function generatePhone(): string {
 
 export interface SingleQuestion {
   title: string;
-  type: 'single';
+  type: string;
   entryId: string;
   options: string[] | null;
 }
@@ -100,7 +101,7 @@ export interface GridRow {
 
 export interface GridQuestion {
   title: string;
-  type: 'grid';
+  type: 'grid' | 'multiple_choice_grid' | 'checkbox_grid';
   columns: string[];
   rows: GridRow[];
 }
@@ -114,6 +115,89 @@ export interface ExtractFormResponse {
   fbzx?: string;
   questions?: FormQuestion[];
   error?: string;
+}
+
+function parseFieldOptions(optionsStr?: string): string[] {
+  if (!optionsStr || !optionsStr.trim()) return [];
+  const str = optionsStr.trim();
+  if (str.includes('\n')) {
+    return str.split('\n').map(s => s.trim()).filter(Boolean);
+  }
+  if (str.includes('||')) {
+    return str.split('||').map(s => s.trim()).filter(Boolean);
+  }
+  if (str.includes(';')) {
+    return str.split(';').map(s => s.trim()).filter(Boolean);
+  }
+  return str.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function getFieldOptionsList(field: Field): string[] {
+  if (field.optionsArray && field.optionsArray.length > 0) {
+    return field.optionsArray;
+  }
+  return parseFieldOptions(field.options);
+}
+
+function getCheckboxSelections(val: string, field: Field): string[] {
+  if (!val || !val.trim()) return [];
+
+  const validOptions = getFieldOptionsList(field);
+  if (validOptions.length > 0) {
+    const selected: string[] = [];
+    let workingVal = val;
+    // Sort descending by length so longer option phrases match before shorter overlapping phrases
+    const sortedOpts = [...validOptions].sort((a, b) => b.length - a.length);
+    for (const opt of sortedOpts) {
+      if (workingVal.includes(opt)) {
+        selected.push(opt);
+        workingVal = workingVal.replaceAll(opt, '');
+      }
+    }
+    if (selected.length > 0) {
+      return validOptions.filter(opt => selected.includes(opt));
+    }
+  }
+
+  // Fallback if no valid options are configured:
+  if (val.includes('||')) return val.split('||').map(s => s.trim()).filter(Boolean);
+  if (val.includes(';')) return val.split(';').map(s => s.trim()).filter(Boolean);
+  if (val.includes('\n')) return val.split('\n').map(s => s.trim()).filter(Boolean);
+  return val.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+
+
+function sanitizeFieldValue(field: Field, rawValue: string): string {
+  const val = (rawValue || '').toString().trim();
+
+  if (field.type === 'linear_scale') {
+    const rawOpts = field.options || '1,5';
+    const nums = rawOpts.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+    const minVal = nums.length > 0 ? Math.min(...nums) : 1;
+    const maxVal = nums.length > 0 ? Math.max(...nums) : 5;
+
+    const match = val.match(/\d+/);
+    if (match) {
+      let num = parseInt(match[0]);
+      num = Math.min(Math.max(num, minVal), maxVal);
+      return String(num);
+    }
+    return String(Math.round((minVal + maxVal) / 2));
+  }
+
+  if (field.type === 'rating') {
+    const maxStar = Math.min(Math.max(parseInt(field.options || '5') || 5, 3), 10);
+    const match = val.match(/\d+/);
+    if (match) {
+      let num = parseInt(match[0]);
+      num = Math.min(Math.max(num, 1), maxStar);
+      return String(num);
+    }
+    return '5';
+  }
+
+  return val;
 }
 
 export default function GoogleFormAutoFillerPage() {
@@ -208,23 +292,28 @@ export default function GoogleFormAutoFillerPage() {
       let idx = 1;
 
       json.questions.forEach((q) => {
-        if (q.type === 'single') {
-          newFields.push({
-            id: Date.now().toString() + idx++,
-            entryId: q.entryId,
-            label: q.title,
-            type: q.options && q.options.length > 0 ? 'multiple_choice' : 'short_answer',
-            options: q.options ? q.options.join(', ') : ''
-          });
-        } else if (q.type === 'grid') {
+        if ('rows' in q && Array.isArray(q.rows)) {
+          const isCbGrid = q.type === 'checkbox_grid';
           q.rows.forEach((r) => {
             newFields.push({
               id: Date.now().toString() + idx++,
               entryId: r.entryId,
               label: `${q.title} - ${r.rowTitle}`,
-              type: 'multiple_choice_grid',
-              options: q.columns.join(', ')
+              type: isCbGrid ? 'checkbox_grid' : 'multiple_choice_grid',
+              options: q.columns.join('\n'),
+              optionsArray: q.columns
             });
+          });
+        } else {
+          const sq = q as SingleQuestion;
+          const fieldType = (sq.type && sq.type !== 'single') ? sq.type : (sq.options && sq.options.length > 0 ? 'multiple_choice' : 'short_answer');
+          newFields.push({
+            id: Date.now().toString() + idx++,
+            entryId: sq.entryId,
+            label: sq.title,
+            type: fieldType,
+            options: sq.options ? sq.options.join('\n') : (fieldType === 'linear_scale' ? '1,5' : ''),
+            optionsArray: sq.options || undefined
           });
         }
       });
@@ -341,7 +430,13 @@ export default function GoogleFormAutoFillerPage() {
   };
 
   const updateField = (id: string, key: keyof Field, value: string) => {
-    setFields(prev => prev.map(f => f.id === id ? { ...f, [key]: value } : f));
+    setFields(prev => prev.map(f => {
+      if (f.id !== id) return f;
+      if (key === 'options') {
+        return { ...f, options: value, optionsArray: undefined };
+      }
+      return { ...f, [key]: value };
+    }));
   };
 
   const clearAllFields = () => {
@@ -358,8 +453,8 @@ export default function GoogleFormAutoFillerPage() {
         { id: '1', entryId: 'entry.1000001', label: 'Họ và tên sinh viên', type: 'short_answer' },
         { id: '2', entryId: 'entry.1000002', label: 'Email trường cấp', type: 'short_answer' },
         { id: '3', entryId: 'entry.1000003', label: 'Trường Đại học', type: 'short_answer' },
-        { id: '4', entryId: 'entry.1000004', label: 'Giới tính', type: 'multiple_choice', options: 'Nam, Nữ, Khác' },
-        { id: '5', entryId: 'entry.1000005', label: 'Năm học', type: 'dropdown', options: 'Năm 1, Năm 2, Năm 3, Năm 4' },
+        { id: '4', entryId: 'entry.1000004', label: 'Giới tính', type: 'multiple_choice', options: 'Nam\nNữ\nKhác' },
+        { id: '5', entryId: 'entry.1000005', label: 'Năm học', type: 'dropdown', options: 'Năm 1\nNăm 2\nNăm 3\nNăm 4' },
         { id: '6', entryId: 'entry.1000006', label: 'Điểm đánh giá chất lượng (1-5)', type: 'linear_scale', options: '1,5' },
         { id: '7', entryId: 'entry.1000007', label: 'Ý kiến / Góp ý', type: 'paragraph' },
       ]);
@@ -369,8 +464,8 @@ export default function GoogleFormAutoFillerPage() {
       setFields([
         { id: '1', entryId: 'entry.2000001', label: 'Họ và tên khách hàng', type: 'short_answer' },
         { id: '2', entryId: 'entry.2000002', label: 'Số điện thoại', type: 'short_answer' },
-        { id: '3', entryId: 'entry.2000003', label: 'Tần suất sử dụng', type: 'multiple_choice', options: 'Hàng ngày, Hàng tuần, Hàng tháng, Hiếm khi' },
-        { id: '4', entryId: 'entry.2000004', label: 'Tính năng thường dùng', type: 'checkboxes', options: 'Tra cứu, Luyện tập, Xem báo cáo, Đặt lịch' },
+        { id: '3', entryId: 'entry.2000003', label: 'Tần suất sử dụng', type: 'multiple_choice', options: 'Hàng ngày\nHàng tuần\nHàng tháng\nHiếm khi' },
+        { id: '4', entryId: 'entry.2000004', label: 'Tính năng thường dùng', type: 'checkboxes', options: 'Tra cứu\nLuyện tập\nXem báo cáo\nĐặt lịch' },
         { id: '5', entryId: 'entry.2000005', label: 'Mức độ hài lòng (1-5 sao)', type: 'rating' },
         { id: '6', entryId: 'entry.2000006', label: 'Cần bổ sung tính năng gì', type: 'paragraph' },
       ]);
@@ -380,7 +475,7 @@ export default function GoogleFormAutoFillerPage() {
       setFields([
         { id: '1', entryId: 'entry.3000001', label: 'Họ và tên người tham gia', type: 'short_answer' },
         { id: '2', entryId: 'entry.3000002', label: 'Email nhận vé', type: 'short_answer' },
-        { id: '3', entryId: 'entry.3000003', label: 'Hình thức tham gia', type: 'multiple_choice', options: 'Trực tiếp (Offline), Trực tuyến (Online Zoom)' },
+        { id: '3', entryId: 'entry.3000003', label: 'Hình thức tham gia', type: 'multiple_choice', options: 'Trực tiếp (Offline)\nTrực tuyến (Online Zoom)' },
         { id: '4', entryId: 'entry.3000004', label: 'Ngày đăng ký dự kiến', type: 'date' },
         { id: '5', entryId: 'entry.3000005', label: 'Giờ có mặt dự kiến', type: 'time' },
         { id: '6', entryId: 'entry.3000006', label: 'Câu hỏi dành cho diễn giả', type: 'paragraph' },
@@ -414,17 +509,23 @@ export default function GoogleFormAutoFillerPage() {
       case 'multiple_choice':
       case 'dropdown':
       case 'multiple_choice_grid': {
-        const choices = (field.options || 'Chưa tốt, Trung bình, Tốt').split(',').map(s => s.trim());
-        return getRandomArr(choices);
+        const choices = getFieldOptionsList(field);
+        return choices.length > 0 ? getRandomArr(choices) : 'Tốt';
       }
       case 'checkboxes':
       case 'checkbox_grid': {
-        const choices = (field.options || 'Chưa tốt, Trung bình, Tốt').split(',').map(s => s.trim());
-        return getRandomArr(choices);
+        const choices = getFieldOptionsList(field);
+        if (choices.length === 0) return 'Tốt';
+        const count = choices.length > 1 && Math.random() > 0.5 ? 2 : 1;
+        const shuffled = [...choices].sort(() => Math.random() - 0.5);
+        return shuffled.slice(0, count).join(' || ');
       }
       case 'linear_scale': {
-        const parts = (field.options || '1,5').split(',').map(n => parseInt(n.trim()) || 1);
-        return String(getRandomInt(parts[0] || 1, parts[1] || 5));
+        const rawOpts = field.options || '1,5';
+        const nums = rawOpts.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+        const minVal = nums.length > 0 ? Math.min(...nums) : 1;
+        const maxVal = nums.length > 0 ? Math.max(...nums) : 5;
+        return String(getRandomInt(minVal, maxVal));
       }
       case 'rating': {
         const maxStar = Math.min(Math.max(parseInt(field.options || '5') || 5, 3), 10);
@@ -634,10 +735,11 @@ export default function GoogleFormAutoFillerPage() {
     }
 
     fieldsRef.current.forEach(f => {
-      const val = rowData[f.entryId] || '';
+      let rawVal = rowData[f.entryId] || '';
+      const val = sanitizeFieldValue(f, rawVal);
 
-      if (['checkboxes', 'checkbox_grid'].includes(f.type) && val.includes(',')) {
-        const optionsArray = val.split(',').map(s => s.trim()).filter(Boolean);
+      if (['checkboxes', 'checkbox_grid'].includes(f.type)) {
+        const optionsArray = getCheckboxSelections(val, f);
         payloadObj[f.entryId] = optionsArray;
         optionsArray.forEach(opt => appendHiddenInput(f.entryId, opt));
       } else {
@@ -666,22 +768,24 @@ export default function GoogleFormAutoFillerPage() {
       }
     } catch (e) {}
 
-    // 2. Secondary Fallback: Client DOM iframe submit
-    document.body.appendChild(form);
-    try {
-      form.submit();
-    } catch (e) {}
+    // 2. Secondary Fallback: Client DOM iframe submit ONLY if Server POST failed
+    if (!serverSuccess) {
+      document.body.appendChild(form);
+      try {
+        form.submit();
+      } catch (e) {}
 
-    setTimeout(() => {
-      if (document.body.contains(form)) {
-        document.body.removeChild(form);
-      }
-    }, 1000);
+      setTimeout(() => {
+        if (document.body.contains(form)) {
+          document.body.removeChild(form);
+        }
+      }, 1000);
+    }
 
     if (serverSuccess) {
-      addLog(`[${nextCount}/${targetCountRef.current}] Gửi thành công (Đã ghi nhận vào Google Form): ${logSummary.slice(0, 2).join(' | ')}...`, 'success');
+      addLog(`[${nextCount}/${targetCountRef.current}] Gửi thành công (Server API): ${logSummary.slice(0, 2).join(' | ')}...`, 'success');
     } else {
-      addLog(`[${nextCount}/${targetCountRef.current}] Đã nộp qua DOM: ${logSummary.slice(0, 2).join(' | ')}...`, 'info');
+      addLog(`[${nextCount}/${targetCountRef.current}] Đã nộp qua DOM Fallback: ${logSummary.slice(0, 2).join(' | ')}...`, 'info');
     }
 
     timerRef.current = setTimeout(() => {
@@ -931,12 +1035,12 @@ export default function GoogleFormAutoFillerPage() {
                         </div>
 
                         {['multiple_choice', 'checkboxes', 'dropdown', 'multiple_choice_grid', 'checkbox_grid'].includes(f.type) && (
-                          <input
-                            type="text"
+                          <textarea
+                            rows={2}
                             value={f.options || ''}
                             onChange={(e) => updateField(f.id, 'options', e.target.value)}
-                            placeholder="Các giá trị cột, phân cách bằng dấu phẩy (vd: Chưa tốt, Trung bình, Tốt)"
-                            className="w-full text-xs input-dark p-1.5 rounded-lg"
+                            placeholder="Nhập các lựa chọn, mỗi lựa chọn trên 1 dòng (hoặc cách nhau bằng ||)"
+                            className="w-full text-xs input-dark p-1.5 rounded-lg resize-y"
                           />
                         )}
 
@@ -1089,14 +1193,15 @@ export default function GoogleFormAutoFillerPage() {
               )}
             </div>
 
-            <div className="overflow-x-auto max-h-[300px] custom-scrollbar border border-white/5 rounded-xl">
+            <div className="overflow-x-auto max-h-[450px] custom-scrollbar border border-white/5 rounded-xl">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-white/5 text-accent border-b border-white/10 font-bold">
-                    <th className="p-2.5 border-r border-white/5 w-10">STT</th>
+                  <tr className="bg-white/5 text-accent border-b border-white/10 font-bold sticky top-0 backdrop-blur-md z-10">
+                    <th className="p-2.5 border-r border-white/5 w-12 text-center align-top">STT</th>
                     {fields.map(f => (
-                      <th key={f.id} className="p-2.5 border-r border-white/5 min-w-[130px]">
-                        {f.label || f.entryId}
+                      <th key={f.id} className="p-2.5 border-r border-white/5 min-w-[200px] align-top">
+                        <div className="font-bold text-accent">{f.label || f.entryId}</div>
+                        <div className="text-[10px] text-text-muted font-mono font-normal">{f.entryId}</div>
                       </th>
                     ))}
                   </tr>
@@ -1110,10 +1215,10 @@ export default function GoogleFormAutoFillerPage() {
                     </tr>
                   ) : (
                     previewRows.map((row, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-white/[0.02] transition">
-                        <td className="p-2 font-mono font-bold text-text-muted border-r border-white/5">{rIdx + 1}</td>
+                      <tr key={rIdx} className="hover:bg-white/[0.03] transition even:bg-white/[0.01]">
+                        <td className="p-2.5 font-mono font-bold text-text-muted border-r border-white/5 text-center align-top">{rIdx + 1}</td>
                         {fields.map(f => (
-                          <td key={f.id} className="p-2 border-r border-white/5 max-w-[180px] truncate" title={row[f.entryId] || ''}>
+                          <td key={f.id} className="p-2.5 border-r border-white/5 min-w-[200px] whitespace-normal break-words align-top leading-relaxed text-text-primary">
                             {row[f.entryId] || '-'}
                           </td>
                         ))}

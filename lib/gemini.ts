@@ -307,13 +307,23 @@ Cấu trúc JSON:
   async generateFormResponses(
     formTopic: string,
     persona: string,
-    fields: { id: string; entryId: string; label: string; type: string; options?: string }[],
+    fields: { id: string; entryId: string; label: string; type: string; options?: string; optionsArray?: string[] }[],
     count: number = 5
   ) {
     const fieldsDesc = fields.map((f, i) => {
       let typeInfo = f.type;
       if (['multiple_choice', 'dropdown', 'checkboxes', 'multiple_choice_grid', 'checkbox_grid'].includes(f.type)) {
-        typeInfo += ` (Các lựa chọn/cột có sẵn: ${f.options || 'Chưa tốt, Trung bình, Tốt'})`;
+        let optsList: string[] = [];
+        if (f.optionsArray && Array.isArray(f.optionsArray) && f.optionsArray.length > 0) {
+          optsList = f.optionsArray;
+        } else if (f.options && typeof f.options === 'string') {
+          if (f.options.includes('\n')) optsList = f.options.split('\n').map(s => s.trim()).filter(Boolean);
+          else if (f.options.includes('||')) optsList = f.options.split('||').map(s => s.trim()).filter(Boolean);
+          else if (f.options.includes(';')) optsList = f.options.split(';').map(s => s.trim()).filter(Boolean);
+          else optsList = f.options.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        const optsDisplay = optsList.length > 0 ? optsList.map(o => `"${o}"`).join(' ; ') : '"Chưa tốt" ; "Trung bình" ; "Tốt"';
+        typeInfo += ` (Danh sách các lựa chọn chuẩn BẮT BUỘC CHỌN NGUYÊN VĂN: [ ${optsDisplay} ])`;
       }
       if (f.type === 'linear_scale') {
         typeInfo += ` (Thang điểm khoảng số: ${f.options || '1,5'})`;
@@ -336,9 +346,9 @@ Yêu cầu sinh dữ liệu chuẩn theo từng loại câu hỏi Google Form:
 1. Hãy sinh đúng ${count} dòng dữ liệu (mỗi dòng đại diện cho 1 câu trả lời đầy đủ của 1 người tham gia khảo sát).
 2. "short_answer" (Trả lời ngắn): Viết câu trả lời ngắn gọn, tên người, email, SĐT hoặc cụm từ ngắn tự nhiên.
 3. "paragraph" (Đoạn văn): Viết ý kiến/nhận xét/góp ý chi tiết 1-3 câu, đa dạng ngữ điệu và từ vựng.
-4. "multiple_choice", "dropdown", "multiple_choice_grid": CHỈ CHỌN 1 trong các lựa chọn/cột có sẵn đã liệt kê.
-5. "checkboxes", "checkbox_grid": Chọn 1 hoặc nhiều lựa chọn/cột có sẵn đã liệt kê (phân cách bằng dấu phẩy nếu nhiều lựa chọn).
-6. "linear_scale" & "rating": Đưa ra số nguyên nằm trong khoảng quy định.
+4. "multiple_choice", "dropdown", "multiple_choice_grid": CHỈ CHỌN ĐÚNG 1 trong danh sách lựa chọn chuẩn đã liệt kê. BẤT DI BẤT DỊCH giữ nguyên văn 100% tên lựa chọn (không cắt bớt, không chia nhỏ dù bên trong có dấu phẩy hay dấu ngoặc).
+5. "checkboxes", "checkbox_grid": Chọn 1 hoặc nhiều từ danh sách lựa chọn chuẩn. BẤT DI BẤT DỊCH giữ nguyên văn 100% từng lựa chọn. Nếu chọn từ 2 lựa chọn trở lên cho cùng 1 trường này, BẮT BUỘC phân cách các lựa chọn bằng chuỗi " || " (Ví dụ: "Bạn bè, người thân giới thiệu || Mạng xã hội (Facebook, TikTok, YouTube...)"). TUYỆT ĐỐI KHÔNG DÙNG DẤU PHẨY "," để phân cách giữa các câu lựa chọn.
+6. "linear_scale" & "rating": ĐƯA RA CHUỖI SỐ NGUYÊN DUY NHẤT nằm trong khoảng quy định (Ví dụ: "4", TUYỆT ĐỐI KHÔNG kèm chữ hay ký tự khác như "4/5", "4 - Tốt", "4 stars", "4.0").
 7. "date": Chuỗi ngày định dạng YYYY-MM-DD.
 8. "time": Chuỗi giờ định dạng HH:mm.
 9. Kết quả trả về là một mảng JSON CHÍNH XÁC chứa ${count} đối tượng key-value (key là "entryId" ví dụ "entry.1000001" và value là giá trị câu trả lời).

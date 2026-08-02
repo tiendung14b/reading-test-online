@@ -90,8 +90,8 @@ export async function POST(request) {
 
       if (!Array.isArray(questionSubItems) || questionSubItems.length === 0) return;
 
-      // Check if it's a Grid question (questionType 7 or multiple rows with row titles)
-      const isGrid = questionType === 7 || (
+      // Check if it's a Grid question (questionType 7 is multiple choice grid, 8 is checkbox grid, or multiple rows with row titles)
+      const isGrid = questionType === 7 || questionType === 8 || (
         questionSubItems.length > 1 &&
         questionSubItems[0] &&
         Array.isArray(questionSubItems[0][1]) &&
@@ -116,7 +116,7 @@ export async function POST(request) {
         if (rows.length > 0) {
           questions.push({
             title,
-            type: 'grid',
+            type: questionType === 8 ? 'checkbox_grid' : 'multiple_choice_grid',
             columns: columns.length > 0 ? columns : ['Khá', 'Tốt'],
             rows
           });
@@ -134,9 +134,38 @@ export async function POST(request) {
           options = optionsRaw.map((opt) => Array.isArray(opt) ? opt[0] : String(opt)).filter(Boolean);
         }
 
+        // Map Google Form questionType: 0=short_answer, 1=paragraph, 2=multiple_choice, 3=dropdown, 4=checkboxes, 5=linear_scale, 9=date, 10=time
+        let mappedType = 'short_answer';
+        if (questionType === 5) {
+          mappedType = 'linear_scale';
+          if (options && options.length > 0) {
+            const minOpt = options[0];
+            const maxOpt = options[options.length - 1];
+            options = [`${minOpt},${maxOpt}`];
+          } else {
+            options = ['1,5'];
+          }
+        } else if (questionType === 0) {
+          mappedType = 'short_answer';
+        } else if (questionType === 1) {
+          mappedType = 'paragraph';
+        } else if (questionType === 2) {
+          mappedType = 'multiple_choice';
+        } else if (questionType === 3) {
+          mappedType = 'dropdown';
+        } else if (questionType === 4) {
+          mappedType = 'checkboxes';
+        } else if (questionType === 9) {
+          mappedType = 'date';
+        } else if (questionType === 10) {
+          mappedType = 'time';
+        } else if (options && options.length > 0) {
+          mappedType = 'multiple_choice';
+        }
+
         questions.push({
           title,
-          type: 'single',
+          type: mappedType,
           entryId,
           options
         });
