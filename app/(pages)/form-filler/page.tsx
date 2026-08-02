@@ -168,6 +168,35 @@ function getCheckboxSelections(val: string, field: Field): string[] {
 
 
 
+function getFieldTypeBadge(type: string) {
+  switch (type) {
+    case 'short_answer':
+      return { label: 'Trả lời ngắn', bg: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+    case 'paragraph':
+      return { label: 'Đoạn văn', bg: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' };
+    case 'multiple_choice':
+      return { label: 'Trắc nghiệm', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+    case 'checkboxes':
+      return { label: 'Hộp kiểm', bg: 'bg-teal-500/10 text-teal-400 border-teal-500/20' };
+    case 'dropdown':
+      return { label: 'Menu thả xuống', bg: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' };
+    case 'multiple_choice_grid':
+      return { label: 'Lưới trắc nghiệm', bg: 'bg-purple-500/10 text-purple-400 border-purple-500/20' };
+    case 'checkbox_grid':
+      return { label: 'Lưới hộp kiểm', bg: 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20' };
+    case 'linear_scale':
+      return { label: 'Thang đo', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+    case 'rating':
+      return { label: 'Đánh giá sao', bg: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' };
+    case 'date':
+      return { label: 'Ngày tháng', bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
+    case 'time':
+      return { label: 'Giờ giấc', bg: 'bg-orange-500/10 text-orange-400 border-orange-500/20' };
+    default:
+      return { label: type, bg: 'bg-white/10 text-text-secondary border-white/10' };
+  }
+}
+
 function sanitizeFieldValue(field: Field, rawValue: string): string {
   const val = (rawValue || '').toString().trim();
 
@@ -206,8 +235,8 @@ export default function GoogleFormAutoFillerPage() {
 
   // Config state
   const [formUrl, setFormUrl] = useState<string>('');
-  const [targetCount, setTargetCount] = useState<number>(10);
-  const [submitDelay, setSubmitDelay] = useState<number>(1.5);
+  const [targetCount, setTargetCount] = useState<number | ''>(10);
+  const [submitDelay, setSubmitDelay] = useState<number | ''>(1.5);
   const [fbzxToken, setFbzxToken] = useState<string>('');
   
   // Fields state - Default EMPTY as requested by user
@@ -242,7 +271,7 @@ export default function GoogleFormAutoFillerPage() {
   useEffect(() => {
     isRunningRef.current = isRunning;
     submittedCountRef.current = submittedCount;
-    targetCountRef.current = targetCount;
+    targetCountRef.current = typeof targetCount === 'number' ? targetCount : 1;
     fieldsRef.current = fields;
     previewRowsRef.current = previewRows;
     formUrlRef.current = formUrl;
@@ -584,7 +613,8 @@ export default function GoogleFormAutoFillerPage() {
     }
 
     setIsAiGenerating(true);
-    addLog(`Đang gửi yêu cầu sinh ${targetCount} mẫu dữ liệu tới Gemini AI...`, 'info');
+    const countNum = typeof targetCount === 'number' ? targetCount : 10;
+    addLog(`Đang gửi yêu cầu sinh ${countNum} mẫu dữ liệu tới Gemini AI...`, 'info');
 
     try {
       const res = await fetch('/api/ai/form-filler', {
@@ -594,7 +624,7 @@ export default function GoogleFormAutoFillerPage() {
           formTopic: formTopic || 'Khảo sát chung',
           persona,
           fields,
-          count: targetCount
+          count: countNum
         })
       });
 
@@ -636,7 +666,8 @@ export default function GoogleFormAutoFillerPage() {
     }
 
     if (previewRows.length === 0) {
-      generateLocalPreviewData(targetCount);
+      const countNum = typeof targetCount === 'number' ? targetCount : 5;
+      generateLocalPreviewData(countNum);
     }
 
     setCurrentStep(2);
@@ -645,9 +676,11 @@ export default function GoogleFormAutoFillerPage() {
   // Step 2 Validation & Start Submission (Go to Step 3)
   const goToStep3AndStart = () => {
     let currentRows = [...previewRows];
+    const countNum = typeof targetCount === 'number' ? targetCount : 1;
+    
     if (currentRows.length === 0) {
       const generated: Record<string, string>[] = [];
-      for (let i = 0; i < targetCount; i++) {
+      for (let i = 0; i < countNum; i++) {
         const row: Record<string, string> = {};
         fields.forEach(f => {
           const val = generateLocalRowValue(f, row);
@@ -666,15 +699,17 @@ export default function GoogleFormAutoFillerPage() {
 
     isRunningRef.current = true;
     submittedCountRef.current = 0;
-    targetCountRef.current = targetCount;
+    
+    const delayMs = (typeof submitDelay === 'number' ? submitDelay : 1.5) * 1000;
+    targetCountRef.current = countNum;
 
     setIsRunning(true);
     setSubmittedCount(0);
     setErrorCount(0);
-    addLog(`=== Bắt đầu tiến trình tự động nộp ${targetCount} câu trả lời ===`, 'warn');
+    addLog(`=== Bắt đầu tiến trình tự động nộp ${countNum} câu trả lời ===`, 'warn');
     toast.success('Đã kích hoạt nộp Form tự động!');
 
-    runSubmissionLoop(formUrl.trim(), submitDelay * 1000, currentRows);
+    runSubmissionLoop(formUrl.trim(), delayMs, currentRows);
   };
 
   const runSubmissionLoop = async (url: string, delayMs: number, dataRows: Record<string, string>[]) => {
@@ -803,12 +838,11 @@ export default function GoogleFormAutoFillerPage() {
     addLog('Đã dừng tiến trình tự động.', 'warn');
   };
 
-  const resumeAutoSubmit = () => {
-    if (submittedCountRef.current >= targetCountRef.current) return;
-    isRunningRef.current = true;
+  const resumeSubmission = () => {
     setIsRunning(true);
-    addLog('Tiếp tục tiến trình tự động...', 'info');
-    runSubmissionLoop(formUrl.trim(), submitDelay * 1000, previewRows);
+    addLog('Tiếp tục tiến trình gửi câu trả lời...', 'info');
+    const delayMs = (typeof submitDelay === 'number' ? submitDelay : 1.5) * 1000;
+    runSubmissionLoop(formUrl.trim(), delayMs, previewRows);
   };
 
   const resetAllAndStartOver = () => {
@@ -818,7 +852,8 @@ export default function GoogleFormAutoFillerPage() {
     setCurrentStep(1);
   };
 
-  const progressPercent = Math.min(100, Math.round((submittedCount / (targetCount || 1)) * 100));
+  const countNum = typeof targetCount === 'number' && targetCount > 0 ? targetCount : 1;
+  const progressPercent = Math.min(100, Math.round((submittedCount / countNum) * 100));
 
   const stepsList = [
     { num: 1, title: '1. Cấu hình dữ liệu', desc: 'Form URL & Câu hỏi' },
@@ -840,7 +875,8 @@ export default function GoogleFormAutoFillerPage() {
               <button
                 key={step.num}
                 onClick={() => {
-                  if (step.num === 1 || (step.num === 2 && fields.length > 0) || (step.num === 3 && isRunning) || (step.num === 4 && submittedCount >= targetCount)) {
+                  const targetNum = typeof targetCount === 'number' ? targetCount : 1;
+                  if (step.num === 1 || (step.num === 2 && fields.length > 0) || (step.num === 3 && isRunning) || (step.num === 4 && submittedCount >= targetNum)) {
                     setCurrentStep(step.num);
                   }
                 }}
@@ -893,38 +929,50 @@ export default function GoogleFormAutoFillerPage() {
             {/* Left Box: Form URL & Submit Config (5 Cols) */}
             <div className="lg:col-span-5 space-y-4">
               <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg border-accent/20">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-accent">
-                    <LinkIcon className="w-3.5 h-3.5" /> 1. Google Form URL / Pre-filled Link
-                  </h2>
-                  <span className="badge-teal text-[10px]">Tự động trích xuất</span>
-                </div>
 
                 <div className="space-y-3">
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-bold" style={{ color: 'var(--text-secondary)' }}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-extrabold tracking-wide uppercase text-text-secondary">
                         Dán Form URL hoặc Pre-filled Link:
                       </label>
+                      <span className="text-[10px] font-medium text-text-muted/70 italic">Tự động phân tích & bóc tách</span>
+                    </div>
+
+                    <div className="input-dark !p-1 flex items-center gap-1.5 rounded-xl border border-white/15 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25 transition-all duration-200 shadow-inner overflow-hidden bg-[var(--bg-surface)]">
+                      <div className="pl-2.5 pr-0.5 flex items-center text-accent/80 shrink-0">
+                        <LinkIcon className="w-3.5 h-3.5" />
+                      </div>
+                      <input
+                        type="text"
+                        value={formUrl}
+                        onChange={(e) => handleUrlInputChange(e.target.value)}
+                        placeholder="Dán link tại đây (vd: https://docs.google.com/forms/d/e/.../viewform...)"
+                        className="w-full text-xs bg-transparent border-none outline-none font-mono text-[var(--text-primary)] placeholder-white/30 py-2 min-w-0"
+                      />
                       <button
                         onClick={() => extractFormStructureWithServer(formUrl)}
-                        disabled={isExtractingForm}
-                        className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1 disabled:opacity-50"
+                        disabled={isExtractingForm || !formUrl.trim()}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shrink-0 transition-all duration-200 bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/40 hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap"
                         title="Phân tích tự động HTML trang Form để lấy tiêu đề, câu hỏi đơn & câu hỏi dạng Lưới"
                       >
-                        {isExtractingForm ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
-                        Trích xuất tự động (Full HTML)
+                        {isExtractingForm ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Đang xử lý...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-3.5 h-3.5" />
+                            <span>Trích xuất tự động</span>
+                          </>
+                        )}
                       </button>
                     </div>
-                    <input
-                      type="text"
-                      value={formUrl}
-                      onChange={(e) => handleUrlInputChange(e.target.value)}
-                      placeholder="Dán link tại đây (vd: https://docs.google.com/forms/d/e/.../viewform?entry.12345=A)"
-                      className="w-full text-xs input-dark p-2.5 rounded-xl font-mono focus:ring-2 focus:ring-accent"
-                    />
-                    <p className="text-[10px] text-text-muted mt-1">
-                      💡 Dán Pre-filled link để hệ thống tự động bóc tách các mã <code className="text-accent">entry.XXXXX</code>!
+
+                    <p className="text-[10px] text-text-muted mt-1.5 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-amber-400 shrink-0 inline" />
+                      <span>Dán Pre-filled link hoặc URL trang khảo sát để hệ thống tự động nhận diện mã <code className="text-accent font-bold">entry.XXXXX</code></span>
                     </p>
                   </div>
 
@@ -936,7 +984,20 @@ export default function GoogleFormAutoFillerPage() {
                       <input
                         type="number"
                         value={targetCount}
-                        onChange={(e) => setTargetCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            setTargetCount('');
+                          } else {
+                            const parsed = parseInt(val, 10);
+                            setTargetCount(isNaN(parsed) ? '' : parsed);
+                          }
+                        }}
+                        onBlur={() => {
+                          if (targetCount === '' || (typeof targetCount === 'number' && targetCount < 1)) {
+                            setTargetCount(1);
+                          }
+                        }}
                         min={1}
                         max={1000}
                         className="w-full text-xs input-dark p-2 rounded-lg font-mono font-bold"
@@ -950,7 +1011,20 @@ export default function GoogleFormAutoFillerPage() {
                       <input
                         type="number"
                         value={submitDelay}
-                        onChange={(e) => setSubmitDelay(Math.max(0.2, parseFloat(e.target.value) || 1))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            setSubmitDelay('');
+                          } else {
+                            const parsed = parseFloat(val);
+                            setSubmitDelay(isNaN(parsed) ? '' : parsed);
+                          }
+                        }}
+                        onBlur={() => {
+                          if (submitDelay === '' || (typeof submitDelay === 'number' && submitDelay < 0.1)) {
+                            setSubmitDelay(1);
+                          }
+                        }}
                         step={0.5}
                         min={0.2}
                         className="w-full text-xs input-dark p-2 rounded-lg font-mono font-bold"
@@ -961,135 +1035,111 @@ export default function GoogleFormAutoFillerPage() {
               </div>
             </div>
 
-            {/* Right Box: Question Fields List Manager (7 Cols) */}
+            {/* Right Box: Visual Extracted Form Structure Viewer (7 Cols) */}
             <div className="lg:col-span-7 space-y-4">
-              <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg flex flex-col">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-accent">
-                    <ListChecks className="w-3.5 h-3.5" /> 2. Danh sách câu hỏi ({fields.length})
-                  </h2>
-                  
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={() => loadPresetTemplate('student')} className="text-[10px] text-accent hover:underline font-bold">
-                      Mẫu SV
-                    </button>
-                    <span className="text-text-muted text-[10px]">|</span>
-                    <button onClick={() => loadPresetTemplate('product')} className="text-[10px] text-accent hover:underline font-bold">
-                      Mẫu SP
-                    </button>
+              <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg flex flex-col min-h-[380px]">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-accent">
+                      <ListChecks className="w-3.5 h-3.5" /> 2. Cấu trúc Form đã trích xuất
+                    </h2>
+                    {fields.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-mono text-[10px] font-extrabold">
+                        {fields.length} câu hỏi
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Scrollable question list */}
-                <div className="space-y-2 overflow-y-auto max-h-[340px] pr-1 custom-scrollbar">
+                {/* Read-only Question Structure Viewer */}
+                <div className="space-y-2.5 overflow-y-auto max-h-[340px] pr-1 custom-scrollbar flex-1">
                   {fields.length === 0 ? (
-                    <div className="text-center py-10 border border-dashed border-white/10 rounded-xl text-text-muted text-xs">
-                      Chưa có câu hỏi nào. Dán link điền sẵn ở trên hoặc bấm &quot;Thêm câu hỏi&quot;!
+                    <div className="text-center py-12 px-4 border border-dashed border-white/10 rounded-2xl bg-white/[0.01] space-y-3">
+                      <div className="w-10 h-10 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto">
+                        <Wand2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-[var(--text-primary)]">Chưa có dữ liệu câu hỏi nào</p>
+                        <p className="text-[11px] text-text-muted mt-1 max-w-sm mx-auto">
+                          Dán Pre-filled Link hoặc Form URL ở bên trái và bấm <strong className="text-accent">&quot;Trích xuất tự động&quot;</strong> để hệ thống tự động bóc tách toàn bộ câu hỏi & đáp án!
+                        </p>
+                      </div>
                     </div>
                   ) : (
-                    fields.map((f, idx) => (
-                      <div key={f.id} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold text-accent w-5">#{idx + 1}</span>
-                          <input
-                            type="text"
-                            value={f.label}
-                            onChange={(e) => updateField(f.id, 'label', e.target.value)}
-                            placeholder="Tên câu hỏi (Tùy chọn)"
-                            className="flex-1 text-xs input-dark p-1.5 rounded-lg"
-                          />
-                          <button
-                            onClick={() => removeField(f.id)}
-                            className="p-1 text-danger hover:bg-danger/10 rounded transition"
-                            title="Xóa"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                    fields.map((f, idx) => {
+                      const typeBadge = getFieldTypeBadge(f.type);
+                      const optsList = getFieldOptionsList(f);
+                      return (
+                        <div key={f.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/10 hover:border-accent/30 transition-all space-y-2 group">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2 min-w-0 flex-1">
+                              <span className="text-xs font-mono font-black text-accent shrink-0 mt-0.5">#{idx + 1}</span>
+                              <h3 className="text-xs font-bold text-[var(--text-primary)] leading-snug" title={f.label}>
+                                {f.label || `Câu hỏi ${idx + 1}`}
+                              </h3>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${typeBadge.bg}`}>
+                                {typeBadge.label}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-accent/10 border border-accent/20 text-accent font-mono text-[10px] font-bold">
+                                {f.entryId}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Render Options visual list */}
+                          {['multiple_choice', 'checkboxes', 'dropdown', 'multiple_choice_grid', 'checkbox_grid'].includes(f.type) && (
+                            <div className="pt-1 border-t border-white/5">
+                              <div className="text-[10px] font-bold text-text-muted mb-1">
+                                Các lựa chọn ({optsList.length}):
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
+                                {optsList.map((opt, i) => (
+                                  <span
+                                    key={i}
+                                    className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[11px] text-text-secondary font-medium hover:border-accent/30 transition"
+                                  >
+                                    {opt}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {f.type === 'linear_scale' && (
+                            <div className="text-[11px] text-text-muted italic pt-0.5 flex items-center gap-1">
+                              <span>Khoảng giá trị thang đo:</span>
+                              <span className="font-mono text-accent font-bold not-italic">{f.options || '1,5'}</span>
+                            </div>
+                          )}
+
+                          {f.type === 'rating' && (
+                            <div className="text-[11px] text-text-muted italic pt-0.5 flex items-center gap-1">
+                              <span>Đánh giá sao:</span>
+                              <span className="font-mono text-amber-400 font-bold not-italic">Thang 1 - {f.options || '5'} ⭐</span>
+                            </div>
+                          )}
+
+                          {['short_answer', 'paragraph'].includes(f.type) && (
+                            <div className="text-[11px] text-text-muted italic pt-0.5">
+                              💬 Nhập câu trả lời bằng văn bản tự do
+                            </div>
+                          )}
                         </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={f.entryId}
-                            onChange={(e) => updateField(f.id, 'entryId', e.target.value)}
-                            placeholder="Entry ID (vd: entry.123)"
-                            className="text-xs font-mono input-dark p-1.5 rounded-lg text-accent font-bold"
-                          />
-                          <select
-                            value={f.type}
-                            onChange={(e) => updateField(f.id, 'type', e.target.value)}
-                            className="text-xs input-dark p-1.5 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                          >
-                            <option value="short_answer" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Short answer (Trả lời ngắn)</option>
-                            <option value="paragraph" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Paragraph (Đoạn văn)</option>
-                            <option value="multiple_choice" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Multiple choice (Trắc nghiệm)</option>
-                            <option value="checkboxes" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Checkboxes (Hộp kiểm)</option>
-                            <option value="dropdown" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Dropdown (Menu thả xuống)</option>
-                            <option value="multiple_choice_grid" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Multiple choice grid (Lưới trắc nghiệm)</option>
-                            <option value="checkbox_grid" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Checkbox grid (Lưới hộp kiểm)</option>
-                            <option value="linear_scale" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Linear scale (Thang đo)</option>
-                            <option value="rating" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Rating (Đánh giá sao)</option>
-                            <option value="date" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Date (Ngày tháng)</option>
-                            <option value="time" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Time (Giờ giấc)</option>
-                          </select>
-                        </div>
-
-                        {['multiple_choice', 'checkboxes', 'dropdown', 'multiple_choice_grid', 'checkbox_grid'].includes(f.type) && (
-                          <textarea
-                            rows={2}
-                            value={f.options || ''}
-                            onChange={(e) => updateField(f.id, 'options', e.target.value)}
-                            placeholder="Nhập các lựa chọn, mỗi lựa chọn trên 1 dòng (hoặc cách nhau bằng ||)"
-                            className="w-full text-xs input-dark p-1.5 rounded-lg resize-y"
-                          />
-                        )}
-
-                        {f.type === 'linear_scale' && (
-                          <input
-                            type="text"
-                            value={f.options || '1,5'}
-                            onChange={(e) => updateField(f.id, 'options', e.target.value)}
-                            placeholder="Khoảng Min,Max (vd: 1,5 hoặc 1,10)"
-                            className="w-full text-xs input-dark p-1.5 rounded-lg"
-                          />
-                        )}
-
-                        {f.type === 'rating' && (
-                          <select
-                            value={f.options || '5'}
-                            onChange={(e) => updateField(f.id, 'options', e.target.value)}
-                            className="w-full text-xs input-dark p-1.5 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] font-bold"
-                          >
-                            <option value="3" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">3 sao (Thang 1 - 3 sao)</option>
-                            <option value="4" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">4 sao (Thang 1 - 4 sao)</option>
-                            <option value="5" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">5 sao (Thang 1 - 5 sao) [Mặc định]</option>
-                            <option value="6" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">6 sao (Thang 1 - 6 sao)</option>
-                            <option value="7" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">7 sao (Thang 1 - 7 sao)</option>
-                            <option value="8" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">8 sao (Thang 1 - 8 sao)</option>
-                            <option value="9" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">9 sao (Thang 1 - 9 sao)</option>
-                            <option value="10" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">10 sao (Thang 1 - 10 sao)</option>
-                          </select>
-                        )}
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-white/10 flex gap-2">
-                  <button
-                    onClick={() => addField()}
-                    className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    <Plus className="w-3.5 h-3.5 text-accent" /> Thêm câu hỏi
-                  </button>
-                  <button
-                    onClick={clearAllFields}
-                    className="px-3 py-2 bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 text-xs font-bold rounded-xl transition"
-                  >
-                    Xóa tất cả
-                  </button>
-                </div>
+                {fields.length > 0 && (
+                  <div className="pt-2 border-t border-white/10 flex justify-between items-center text-xs">
+                    <span className="text-[11px] text-text-muted">
+                      Đã bóc tách thành công <strong className="text-accent">{fields.length}</strong> câu hỏi.
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1170,7 +1220,7 @@ export default function GoogleFormAutoFillerPage() {
                 </button>
 
                 <button
-                  onClick={() => generateLocalPreviewData(targetCount)}
+                  onClick={() => generateLocalPreviewData(typeof targetCount === 'number' ? targetCount : 10)}
                   className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
                   style={{ color: 'var(--text-primary)' }}
                 >
@@ -1278,7 +1328,7 @@ export default function GoogleFormAutoFillerPage() {
                   </button>
                 ) : (
                   <button
-                    onClick={resumeAutoSubmit}
+                    onClick={resumeSubmission}
                     className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition shadow-lg shadow-emerald-900/30 flex items-center gap-1.5"
                   >
                     <Play className="w-3.5 h-3.5 fill-white" /> Tiếp tục gửi
@@ -1367,7 +1417,7 @@ export default function GoogleFormAutoFillerPage() {
               <ArrowLeft className="w-4 h-4" /> Quay lại Xem trước dữ liệu
             </button>
 
-            {submittedCount >= targetCount && (
+            {typeof targetCount === 'number' && submittedCount >= targetCount && (
               <button
                 onClick={() => setCurrentStep(4)}
                 className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition shadow-lg flex items-center gap-2"
