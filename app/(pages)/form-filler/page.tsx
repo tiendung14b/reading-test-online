@@ -17,7 +17,11 @@ import {
   CheckCircle2, 
   Wand2, 
   Zap,
-  Info
+  Info,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Trophy
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -83,23 +87,19 @@ function generatePhone(): string {
 }
 
 export default function GoogleFormAutoFillerPage() {
+  // Current Wizard Step: 1 | 2 | 3 | 4
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
   // Config state
-  const [formUrl, setFormUrl] = useState<string>('https://docs.google.com/forms/d/e/1FAIpQLSc_EXAMPLE_ID_HERE/formResponse');
+  const [formUrl, setFormUrl] = useState<string>('');
   const [targetCount, setTargetCount] = useState<number>(10);
   const [submitDelay, setSubmitDelay] = useState<number>(1.5);
   
-  // Fields state
-  const [fields, setFields] = useState<Field[]>([
-    { id: '1', entryId: 'entry.1000001', label: 'Họ và tên', type: 'name' },
-    { id: '2', entryId: 'entry.1000002', label: 'Email liên hệ', type: 'email' },
-    { id: '3', entryId: 'entry.1000003', label: 'Trường học / Nơi làm việc', type: 'uni' },
-    { id: '4', entryId: 'entry.1000004', label: 'Giới tính', type: 'custom_choice', options: 'Nam, Nữ, Khác' },
-    { id: '5', entryId: 'entry.1000005', label: 'Mức độ hài lòng (1-5)', type: 'number_range', options: '1,5' },
-    { id: '6', entryId: 'entry.1000006', label: 'Ý kiến đóng góp', type: 'comment' },
-  ]);
+  // Fields state - Default EMPTY as requested
+  const [fields, setFields] = useState<Field[]>([]);
 
   // AI Prompt State
-  const [formTopic, setFormTopic] = useState<string>('Khảo sát trải nghiệm dịch vụ và ứng dụng công nghệ của sinh viên');
+  const [formTopic, setFormTopic] = useState<string>('');
   const [persona, setPersona] = useState<string>('Đa dạng sinh viên từ nhiều khoa, 80% hài lòng tích cực, 20% đóng góp ý kiến cải thiện.');
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
 
@@ -107,9 +107,9 @@ export default function GoogleFormAutoFillerPage() {
   const [previewRows, setPreviewRows] = useState<Record<string, string>[]>([]);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [submittedCount, setSubmittedCount] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState<'logs' | 'preview'>('logs');
+  const [errorCount, setErrorCount] = useState<number>(0);
   const [logs, setLogs] = useState<LogEntry[]>([
-    { id: '1', timestamp: new Date().toLocaleTimeString(), message: 'Hệ thống sẵn sàng. Dán link Google Form hoặc Pre-filled link vào ô URL bên dưới.', type: 'info' }
+    { id: '1', timestamp: new Date().toLocaleTimeString(), message: 'Hệ thống sẵn sàng. Vui lòng dán link Google Form để bắt đầu.', type: 'info' }
   ]);
   const [showHelperModal, setShowHelperModal] = useState<boolean>(false);
 
@@ -147,7 +147,6 @@ export default function GoogleFormAutoFillerPage() {
     }
 
     try {
-      // 1. Format Form Action URL
       let actionUrl = trimmed.split('?')[0];
       if (actionUrl.endsWith('/viewform')) {
         actionUrl = actionUrl.replace(/\/viewform$/, '/formResponse');
@@ -160,7 +159,6 @@ export default function GoogleFormAutoFillerPage() {
 
       setFormUrl(actionUrl);
 
-      // 2. Extract Entry IDs (Only auto-fill Entry ID, user configures label & type)
       const queryString = trimmed.includes('?') ? trimmed.substring(trimmed.indexOf('?') + 1) : '';
       const params = new URLSearchParams(queryString);
       const extractedFields: Field[] = [];
@@ -304,7 +302,6 @@ export default function GoogleFormAutoFillerPage() {
       newRows.push(row);
     }
     setPreviewRows(newRows);
-    setActiveTab('preview');
     addLog(`Đã sinh ${countToGenerate} dòng dữ liệu ngẫu nhiên bằng JS local.`, 'success');
     toast.success(`Đã tạo ${countToGenerate} mẫu xem trước!`);
   };
@@ -331,7 +328,7 @@ export default function GoogleFormAutoFillerPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          formTopic,
+          formTopic: formTopic || 'Khảo sát chung',
           persona,
           fields,
           count: targetCount
@@ -346,7 +343,6 @@ export default function GoogleFormAutoFillerPage() {
 
       const rows: Record<string, string>[] = json.data;
       setPreviewRows(rows);
-      setActiveTab('preview');
       addLog(`🎉 Gemini AI đã sinh thành công ${rows.length} dòng dữ liệu chất lượng cao!`, 'success');
       toast.success(`Gemini AI đã tạo ${rows.length} dòng dữ liệu!`);
     } catch (err: unknown) {
@@ -358,19 +354,17 @@ export default function GoogleFormAutoFillerPage() {
     }
   };
 
-  // Submission Process Execution
-  const startAutoSubmit = () => {
+  // Step 1 Validation & Navigation
+  const goToStep2 = () => {
     const url = formUrl.trim();
     if (!url || !url.includes('/formResponse')) {
       toast.error('Google Form URL phải chứa "/formResponse" ở cuối!');
       return;
     }
-
     if (fields.length === 0) {
-      toast.error('Vui lòng thêm ít nhất 1 câu hỏi!');
+      toast.error('Vui lòng thêm ít nhất 1 câu hỏi (Entry ID)!');
       return;
     }
-
     for (let f of fields) {
       if (!f.entryId.startsWith('entry.')) {
         toast.error(`Entry ID "${f.entryId}" phải bắt đầu bằng entry.`);
@@ -378,6 +372,15 @@ export default function GoogleFormAutoFillerPage() {
       }
     }
 
+    if (previewRows.length === 0) {
+      generateLocalPreviewData(targetCount);
+    }
+
+    setCurrentStep(2);
+  };
+
+  // Step 2 Validation & Start Submission (Go to Step 3)
+  const goToStep3AndStart = () => {
     let currentRows = [...previewRows];
     if (currentRows.length === 0) {
       const generated: Record<string, string>[] = [];
@@ -394,16 +397,19 @@ export default function GoogleFormAutoFillerPage() {
       setPreviewRows(currentRows);
     }
 
+    setCurrentStep(3);
+
     isRunningRef.current = true;
     submittedCountRef.current = 0;
     targetCountRef.current = targetCount;
 
     setIsRunning(true);
     setSubmittedCount(0);
+    setErrorCount(0);
     addLog(`=== Bắt đầu tiến trình tự động nộp ${targetCount} câu trả lời ===`, 'warn');
-    toast.success('Bắt đầu gửi tự động!');
+    toast.success('Đã kích hoạt nộp Form tự động!');
 
-    runSubmissionLoop(url, submitDelay * 1000, currentRows);
+    runSubmissionLoop(formUrl.trim(), submitDelay * 1000, currentRows);
   };
 
   const runSubmissionLoop = (url: string, delayMs: number, dataRows: Record<string, string>[]) => {
@@ -417,6 +423,7 @@ export default function GoogleFormAutoFillerPage() {
       if (timerRef.current) clearTimeout(timerRef.current);
       addLog(`🎉 HOÀN THÀNH: Đã tự động nộp đủ ${targetCountRef.current} câu trả lời!`, 'success');
       toast.success(`Hoàn thành gửi ${targetCountRef.current} lượt!`);
+      setTimeout(() => setCurrentStep(4), 600);
       return;
     }
 
@@ -439,7 +446,6 @@ export default function GoogleFormAutoFillerPage() {
     const logSummary: string[] = [];
     const formBody = new URLSearchParams();
 
-    // 1. DOM hidden form submit to iframe
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = url;
@@ -459,14 +465,15 @@ export default function GoogleFormAutoFillerPage() {
       logSummary.push(`${f.label || f.entryId}: "${val}"`);
     });
 
-    // Send dual HTTP request (no-cors fetch + iframe submit) for 100% submission reliability
     try {
       fetch(url, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formBody.toString()
-      }).catch(() => {});
+      }).catch(() => {
+        setErrorCount(prev => prev + 1);
+      });
     } catch (e) {}
 
     document.body.appendChild(form);
@@ -475,6 +482,7 @@ export default function GoogleFormAutoFillerPage() {
       form.submit();
       addLog(`[${nextCount}/${targetCountRef.current}] Gửi thành công: ${logSummary.slice(0, 2).join(' | ')}...`, 'success');
     } catch (err: unknown) {
+      setErrorCount(prev => prev + 1);
       const errMsg = err instanceof Error ? err.message : String(err);
       addLog(`Lỗi nộp lượt #${nextCount}: ${errMsg}`, 'error');
     }
@@ -500,237 +508,298 @@ export default function GoogleFormAutoFillerPage() {
     addLog('Đã dừng tiến trình tự động.', 'warn');
   };
 
+  const resumeAutoSubmit = () => {
+    if (submittedCountRef.current >= targetCountRef.current) return;
+    isRunningRef.current = true;
+    setIsRunning(true);
+    addLog('Tiếp tục tiến trình tự động...', 'info');
+    runSubmissionLoop(formUrl.trim(), submitDelay * 1000, previewRows);
+  };
+
+  const resetAllAndStartOver = () => {
+    stopAutoSubmit();
+    setSubmittedCount(0);
+    setErrorCount(0);
+    setCurrentStep(1);
+  };
+
   const progressPercent = Math.min(100, Math.round((submittedCount / (targetCount || 1)) * 100));
 
-  return (
-    <div className="p-3 sm:p-5 max-w-7xl mx-auto space-y-4">
-      {/* Header Banner - Compact for 13" laptop screens */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-indigo-900/40 border border-white/10 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
-        <div className="absolute -top-24 -right-24 w-60 h-60 bg-accent/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-accent/20 border border-accent/40 flex items-center justify-center text-accent shadow-md shadow-accent/20 shrink-0">
-              <Bot className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                  Google Form <span className="text-accent">AI Auto-Filler</span>
-                </h1>
-                <span className="badge-teal text-[10px] py-0.5 px-2 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Gemini Powered
-                </span>
-              </div>
-              <p className="text-xs text-text-muted">
-                Tự động trích xuất Entry ID từ link Form & Sinh câu trả lời bằng Gemini AI
-              </p>
-            </div>
-          </div>
+  const stepsList = [
+    { num: 1, title: '1. Cấu hình dữ liệu', desc: 'Form URL & Câu hỏi' },
+    { num: 2, title: '2. Generate Data', desc: 'Sinh dữ liệu AI / JS' },
+    { num: 3, title: '3. Trạng thái gửi', desc: 'Tiến trình gửi Form' },
+    { num: 4, title: '4. Thành công', desc: 'Báo cáo & Tổng kết' },
+  ];
 
-          <button
-            onClick={() => setShowHelperModal(true)}
-            className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold transition flex items-center gap-1.5 shrink-0"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-accent" /> Lấy Link điền sẵn
-          </button>
+  return (
+    <div className="p-3 sm:p-5 max-w-6xl mx-auto space-y-4 relative">
+      
+      {/* Stepper Navigation Bar & Integrated Inline Help Button at Top */}
+      <div className="card-glass rounded-2xl p-3 shadow-lg border-accent/20 flex flex-col md:flex-row items-center gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 flex-1 w-full">
+          {stepsList.map(step => {
+            const isActive = currentStep === step.num;
+            const isCompleted = currentStep > step.num;
+            return (
+              <button
+                key={step.num}
+                onClick={() => {
+                  if (step.num === 1 || (step.num === 2 && fields.length > 0) || (step.num === 3 && isRunning) || (step.num === 4 && submittedCount >= targetCount)) {
+                    setCurrentStep(step.num);
+                  }
+                }}
+                className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2.5 ${
+                  isActive
+                    ? 'bg-accent/15 border-accent text-accent shadow-md shadow-accent/10'
+                    : isCompleted
+                    ? 'bg-white/[0.04] border-emerald-500/30 text-emerald-400'
+                    : 'bg-white/[0.02] border-white/5 text-text-muted hover:bg-white/5'
+                }`}
+              >
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                  isActive
+                    ? 'bg-accent text-on-accent'
+                    : isCompleted
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    : 'bg-white/10 text-text-muted'
+                }`}>
+                  {isCompleted ? <Check className="w-4 h-4" /> : step.num}
+                </div>
+                <div className="overflow-hidden">
+                  <div className="font-black text-xs truncate" style={{ color: isActive ? 'var(--accent)' : 'var(--text-primary)' }}>
+                    {step.title}
+                  </div>
+                  <div className="text-[10px] text-text-muted truncate">{step.desc}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Clean Help Button inside Stepper Bar - No overlay issues */}
+        <button
+          onClick={() => setShowHelperModal(true)}
+          className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold transition flex items-center gap-1.5 shrink-0 text-accent hover:border-accent/40 w-full md:w-auto justify-center"
+          title="Hướng dẫn lấy Link điền sẵn"
+        >
+          <HelpCircle className="w-4 h-4 text-accent" />
+          <span>Trợ giúp</span>
+        </button>
       </div>
 
-      {/* Main Grid: Responsive 2-column layout optimized for 13" laptop screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
-        {/* Left Column: Form Action URL & Question Fields (5 Cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          
-          {/* Card 1: Combined Form URL & Auto Entry ID Extraction */}
-          <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg border-accent/20">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-accent">
-                <LinkIcon className="w-3.5 h-3.5" /> 1. Google Form URL / Pre-filled Link
-              </h2>
-              <span className="text-[10px] text-text-muted">Tự động nhận diện</span>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-bold" style={{ color: 'var(--text-secondary)' }}>
-                    Dán URL hoặc Pre-filled Link tại đây:
-                  </label>
-                  <button
-                    onClick={() => extractEntriesFromUrl(formUrl)}
-                    className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1"
-                  >
-                    <Wand2 className="w-3 h-3" /> Trích xuất Entry ID
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={formUrl}
-                  onChange={(e) => handleUrlInputChange(e.target.value)}
-                  placeholder="Dán link tại đây (vd: https://docs.google.com/forms/d/e/.../viewform?entry.12345=A&entry.67890=B)"
-                  className="w-full text-xs input-dark p-2.5 rounded-xl font-mono focus:ring-2 focus:ring-accent"
-                />
-                <p className="text-[10px] text-text-muted mt-1">
-                  💡 Nếu dán Pre-filled link, hệ thống sẽ <b>tự động trích xuất các mã Entry ID</b> vào danh sách bên dưới!
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
-                <div>
-                  <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Số lượng mẫu gửi:
-                  </label>
-                  <input
-                    type="number"
-                    value={targetCount}
-                    onChange={(e) => setTargetCount(Math.max(1, parseInt(e.target.value) || 1))}
-                    min={1}
-                    max={1000}
-                    className="w-full text-xs input-dark p-2 rounded-lg font-mono font-bold"
-                  />
+      {/* ========================================================================= */}
+      {/* STEP 1: NHẬP CÁC DỮ LIỆU CẦN THIẾT */}
+      {/* ========================================================================= */}
+      {currentStep === 1 && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            {/* Left Box: Form URL & Submit Config (5 Cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg border-accent/20">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-accent">
+                    <LinkIcon className="w-3.5 h-3.5" /> 1. Google Form URL / Pre-filled Link
+                  </h2>
+                  <span className="badge-teal text-[10px]">Tự động trích xuất</span>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Độ trễ mỗi lượt (s):
-                  </label>
-                  <input
-                    type="number"
-                    value={submitDelay}
-                    onChange={(e) => setSubmitDelay(Math.max(0.2, parseFloat(e.target.value) || 1))}
-                    step={0.5}
-                    min={0.2}
-                    className="w-full text-xs input-dark p-2 rounded-lg font-mono font-bold"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2: Question Fields List */}
-          <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg flex flex-col">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-accent">
-                <ListChecks className="w-3.5 h-3.5" /> 2. Danh sách câu hỏi ({fields.length})
-              </h2>
-              
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => loadPresetTemplate('student')} className="text-[10px] text-accent hover:underline font-bold">
-                  Mẫu SV
-                </button>
-                <span className="text-text-muted text-[10px]">|</span>
-                <button onClick={() => loadPresetTemplate('product')} className="text-[10px] text-accent hover:underline font-bold">
-                  Mẫu SP
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable list optimized for 13" vertical height */}
-            <div className="space-y-2 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
-              {fields.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-white/10 rounded-xl text-text-muted text-xs">
-                  Chưa có câu hỏi. Dán link điền sẵn ở trên hoặc bấm &quot;Thêm câu hỏi&quot;!
-                </div>
-              ) : (
-                fields.map((f, idx) => (
-                  <div key={f.id} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-accent w-5">#{idx + 1}</span>
-                      <input
-                        type="text"
-                        value={f.label}
-                        onChange={(e) => updateField(f.id, 'label', e.target.value)}
-                        placeholder="Tên câu hỏi (Tùy chỉnh)"
-                        className="flex-1 text-xs input-dark p-1.5 rounded-lg"
-                      />
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold" style={{ color: 'var(--text-secondary)' }}>
+                        Dán Form URL hoặc Pre-filled Link:
+                      </label>
                       <button
-                        onClick={() => removeField(f.id)}
-                        className="p-1 text-danger hover:bg-danger/10 rounded transition"
-                        title="Xóa"
+                        onClick={() => extractEntriesFromUrl(formUrl)}
+                        className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Wand2 className="w-3 h-3" /> Trích xuất Entry ID
                       </button>
                     </div>
+                    <input
+                      type="text"
+                      value={formUrl}
+                      onChange={(e) => handleUrlInputChange(e.target.value)}
+                      placeholder="Dán link tại đây (vd: https://docs.google.com/forms/d/e/.../viewform?entry.12345=A)"
+                      className="w-full text-xs input-dark p-2.5 rounded-xl font-mono focus:ring-2 focus:ring-accent"
+                    />
+                    <p className="text-[10px] text-text-muted mt-1">
+                      💡 Dán Pre-filled link để hệ thống tự động bóc tách các mã <code className="text-accent">entry.XXXXX</code>!
+                    </p>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                        Số lượng mẫu nộp:
+                      </label>
                       <input
-                        type="text"
-                        value={f.entryId}
-                        onChange={(e) => updateField(f.id, 'entryId', e.target.value)}
-                        placeholder="Entry ID (vd: entry.123)"
-                        className="text-xs font-mono input-dark p-1.5 rounded-lg text-accent font-bold"
+                        type="number"
+                        value={targetCount}
+                        onChange={(e) => setTargetCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        min={1}
+                        max={1000}
+                        className="w-full text-xs input-dark p-2 rounded-lg font-mono font-bold"
                       />
-                      <select
-                        value={f.type}
-                        onChange={(e) => updateField(f.id, 'type', e.target.value)}
-                        className="text-xs input-dark p-1.5 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                      >
-                        <option value="name" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Họ tên Việt Nam</option>
-                        <option value="email" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Email ngẫu nhiên</option>
-                        <option value="phone" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Số điện thoại</option>
-                        <option value="uni" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Trường Đại học</option>
-                        <option value="comment" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Ý kiến / Nhận xét</option>
-                        <option value="number_range" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Số (Min,Max)</option>
-                        <option value="custom_choice" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Trắc nghiệm (Custom)</option>
-                      </select>
                     </div>
 
-                    {f.type === 'custom_choice' && (
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                        Độ trễ mỗi lượt (s):
+                      </label>
                       <input
-                        type="text"
-                        value={f.options || ''}
-                        onChange={(e) => updateField(f.id, 'options', e.target.value)}
-                        placeholder="Các lựa chọn, phân cách bằng dấu phẩy (vd: Nam, Nữ, Khác)"
-                        className="w-full text-xs input-dark p-1.5 rounded-lg"
+                        type="number"
+                        value={submitDelay}
+                        onChange={(e) => setSubmitDelay(Math.max(0.2, parseFloat(e.target.value) || 1))}
+                        step={0.5}
+                        min={0.2}
+                        className="w-full text-xs input-dark p-2 rounded-lg font-mono font-bold"
                       />
-                    )}
-
-                    {f.type === 'number_range' && (
-                      <input
-                        type="text"
-                        value={f.options || '1,5'}
-                        onChange={(e) => updateField(f.id, 'options', e.target.value)}
-                        placeholder="Khoảng Min,Max (vd: 1,5 hoặc 18,60)"
-                        className="w-full text-xs input-dark p-1.5 rounded-lg"
-                      />
-                    )}
+                    </div>
                   </div>
-                ))
-              )}
+                </div>
+              </div>
             </div>
 
-            <div className="pt-2 border-t border-white/10 flex gap-2">
-              <button
-                onClick={() => addField()}
-                className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                <Plus className="w-3.5 h-3.5 text-accent" /> Thêm câu hỏi
-              </button>
-              <button
-                onClick={clearAllFields}
-                className="px-3 py-2 bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 text-xs font-bold rounded-xl transition"
-              >
-                Xóa tất cả
-              </button>
+            {/* Right Box: Question Fields List Manager (7 Cols) */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg flex flex-col">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-accent">
+                    <ListChecks className="w-3.5 h-3.5" /> 2. Danh sách câu hỏi ({fields.length})
+                  </h2>
+                  
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => loadPresetTemplate('student')} className="text-[10px] text-accent hover:underline font-bold">
+                      Mẫu SV
+                    </button>
+                    <span className="text-text-muted text-[10px]">|</span>
+                    <button onClick={() => loadPresetTemplate('product')} className="text-[10px] text-accent hover:underline font-bold">
+                      Mẫu SP
+                    </button>
+                  </div>
+                </div>
+
+                {/* Scrollable question list */}
+                <div className="space-y-2 overflow-y-auto max-h-[340px] pr-1 custom-scrollbar">
+                  {fields.length === 0 ? (
+                    <div className="text-center py-10 border border-dashed border-white/10 rounded-xl text-text-muted text-xs">
+                      Chưa có câu hỏi nào. Dán link điền sẵn ở trên hoặc bấm &quot;Thêm câu hỏi&quot;!
+                    </div>
+                  ) : (
+                    fields.map((f, idx) => (
+                      <div key={f.id} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono font-bold text-accent w-5">#{idx + 1}</span>
+                          <input
+                            type="text"
+                            value={f.label}
+                            onChange={(e) => updateField(f.id, 'label', e.target.value)}
+                            placeholder="Tên câu hỏi (Tùy chọn)"
+                            className="flex-1 text-xs input-dark p-1.5 rounded-lg"
+                          />
+                          <button
+                            onClick={() => removeField(f.id)}
+                            className="p-1 text-danger hover:bg-danger/10 rounded transition"
+                            title="Xóa"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={f.entryId}
+                            onChange={(e) => updateField(f.id, 'entryId', e.target.value)}
+                            placeholder="Entry ID (vd: entry.123)"
+                            className="text-xs font-mono input-dark p-1.5 rounded-lg text-accent font-bold"
+                          />
+                          <select
+                            value={f.type}
+                            onChange={(e) => updateField(f.id, 'type', e.target.value)}
+                            className="text-xs input-dark p-1.5 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)]"
+                          >
+                            <option value="name" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Họ tên Việt Nam</option>
+                            <option value="email" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Email ngẫu nhiên</option>
+                            <option value="phone" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Số điện thoại</option>
+                            <option value="uni" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Trường Đại học</option>
+                            <option value="comment" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Ý kiến / Nhận xét</option>
+                            <option value="number_range" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Số (Min,Max)</option>
+                            <option value="custom_choice" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Trắc nghiệm (Custom)</option>
+                          </select>
+                        </div>
+
+                        {f.type === 'custom_choice' && (
+                          <input
+                            type="text"
+                            value={f.options || ''}
+                            onChange={(e) => updateField(f.id, 'options', e.target.value)}
+                            placeholder="Các lựa chọn, phân cách bằng dấu phẩy (vd: Nam, Nữ, Khác)"
+                            className="w-full text-xs input-dark p-1.5 rounded-lg"
+                          />
+                        )}
+
+                        {f.type === 'number_range' && (
+                          <input
+                            type="text"
+                            value={f.options || '1,5'}
+                            onChange={(e) => updateField(f.id, 'options', e.target.value)}
+                            placeholder="Khoảng Min,Max (vd: 1,5 hoặc 18,60)"
+                            className="w-full text-xs input-dark p-1.5 rounded-lg"
+                          />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-white/10 flex gap-2">
+                  <button
+                    onClick={() => addField()}
+                    className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <Plus className="w-3.5 h-3.5 text-accent" /> Thêm câu hỏi
+                  </button>
+                  <button
+                    onClick={clearAllFields}
+                    className="px-3 py-2 bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 text-xs font-bold rounded-xl transition"
+                  >
+                    Xóa tất cả
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Bottom Bar: Step 1 Navigation */}
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={goToStep2}
+              className="px-6 py-3 btn-primary text-xs font-black rounded-xl transition flex items-center gap-2 shadow-lg"
+            >
+              Chuyển sang Bước 2: Generate Data <ArrowRight className="w-4 h-4 text-on-accent" />
+            </button>
+          </div>
         </div>
+      )}
 
-        {/* Right Column: AI Generator, Engine Control & Logs/Preview (7 Cols) */}
-        <div className="lg:col-span-7 space-y-4">
-
-          {/* Card 3: AI Gemini Smart Data Generator */}
+      {/* ========================================================================= */}
+      {/* STEP 2: GENERATE DATA (AI / LOCAL JS) */}
+      {/* ========================================================================= */}
+      {currentStep === 2 && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          
+          {/* Card 1: AI Prompt Config */}
           <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg border-accent/20">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-accent">
-                <Sparkles className="w-3.5 h-3.5" /> 3. Sinh dữ liệu bằng Gemini AI
+                <Sparkles className="w-3.5 h-3.5" /> Sinh dữ liệu câu trả lời cho {targetCount} người điền Form
               </h2>
-              <span className="badge-purple text-[10px] py-0.5 px-2 flex items-center gap-1">
-                <Zap className="w-3 h-3" /> Auto Persona
-              </span>
+              <span className="badge-purple text-[10px]">Gemini 3.6 AI</span>
             </div>
 
             <div className="space-y-2.5">
@@ -743,20 +812,20 @@ export default function GoogleFormAutoFillerPage() {
                     type="text"
                     value={formTopic}
                     onChange={(e) => setFormTopic(e.target.value)}
-                    placeholder="Ví dụ: Khảo sát trải nghiệm dịch vụ..."
+                    placeholder="Ví dụ: Khảo sát trải nghiệm học trực tuyến..."
                     className="w-full text-xs input-dark p-2 rounded-lg"
                   />
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Đặc điểm / Thái độ (Persona):
+                    Đặc điểm đối tượng (Persona):
                   </label>
                   <input
                     type="text"
                     value={persona}
                     onChange={(e) => setPersona(e.target.value)}
-                    placeholder="Ví dụ: 80% hài lòng, 20% góp ý..."
+                    placeholder="Ví dụ: 80% khen ngợi tích cực, 20% góp ý thẳng thắn..."
                     className="w-full text-xs input-dark p-2 rounded-lg"
                   />
                 </div>
@@ -765,186 +834,285 @@ export default function GoogleFormAutoFillerPage() {
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <button
                   onClick={generateAiPreviewData}
-                  disabled={isAiGenerating || isRunning}
+                  disabled={isAiGenerating}
                   className="flex-1 py-2.5 btn-primary text-xs font-black rounded-xl transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
                 >
                   {isAiGenerating ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin text-on-accent" />
-                      Gemini đang sinh câu trả lời...
+                      Gemini AI đang suy nghĩ & tạo câu trả lời...
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-3.5 h-3.5 text-on-accent" />
-                      Sinh {targetCount} dòng câu trả lời bằng Gemini AI
+                      Sinh {targetCount} mẫu bằng Gemini AI
                     </>
                   )}
                 </button>
 
                 <button
-                  onClick={() => generateLocalPreviewData(5)}
-                  disabled={isRunning}
-                  className="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+                  onClick={() => generateLocalPreviewData(targetCount)}
+                  className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-accent" /> Sinh nhanh JS
+                  <RefreshCw className="w-3.5 h-3.5 text-accent" /> Sinh nhanh bằng JS (Offline)
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Card 4: Auto Submission Control Box */}
+          {/* Card 2: Generated Data Preview Table */}
           <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <h3 className="font-black text-xs uppercase tracking-wider text-accent flex items-center gap-1.5">
+                <TableIcon className="w-3.5 h-3.5" /> Bảng dữ liệu xem trước ({previewRows.length} dòng)
+              </h3>
+              {previewRows.length > 0 && (
+                <button onClick={() => setPreviewRows([])} className="text-[11px] text-danger hover:underline font-bold">
+                  Xóa dữ liệu
+                </button>
+              )}
+            </div>
+
+            <div className="overflow-x-auto max-h-[300px] custom-scrollbar border border-white/5 rounded-xl">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-white/5 text-accent border-b border-white/10 font-bold">
+                    <th className="p-2.5 border-r border-white/5 w-10">STT</th>
+                    {fields.map(f => (
+                      <th key={f.id} className="p-2.5 border-r border-white/5 min-w-[130px]">
+                        {f.label || f.entryId}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-text-secondary">
+                  {previewRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={fields.length + 1} className="p-8 text-center text-text-muted">
+                        Chưa có dữ liệu. Nhấn nút &quot;Sinh mẫu bằng Gemini AI&quot; hoặc &quot;Sinh nhanh bằng JS&quot; ở trên!
+                      </td>
+                    </tr>
+                  ) : (
+                    previewRows.map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-white/[0.02] transition">
+                        <td className="p-2 font-mono font-bold text-text-muted border-r border-white/5">{rIdx + 1}</td>
+                        {fields.map(f => (
+                          <td key={f.id} className="p-2 border-r border-white/5 max-w-[180px] truncate" title={row[f.entryId] || ''}>
+                            {row[f.entryId] || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Bottom Bar: Step 2 Navigation */}
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={() => setCurrentStep(1)}
+              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <ArrowLeft className="w-4 h-4" /> Quay lại Bước 1
+            </button>
+
+            <button
+              onClick={goToStep3AndStart}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition shadow-lg shadow-emerald-900/30 flex items-center gap-2"
+            >
+              <Play className="w-4 h-4 fill-white" /> Bắt đầu nộp Form (Sang Bước 3) <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* STEP 3: TRANG CẬP NHẬT TRẠNG THÁI GỬI */}
+      {/* ========================================================================= */}
+      {currentStep === 3 && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          
+          {/* Main Dashboard Card */}
+          <div className="card-glass rounded-2xl p-5 space-y-4 shadow-xl border-accent/20">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
               <div>
-                <h2 className="font-black text-sm" style={{ color: 'var(--text-primary)' }}>
-                  Bảng điều khiển nộp Form tự động
+                <h2 className="font-black text-base" style={{ color: 'var(--text-primary)' }}>
+                  Trạng thái nộp Google Form tự động
                 </h2>
-                <p className="text-[11px] text-text-muted">Nộp dữ liệu trực tiếp vào Google Form</p>
+                <p className="text-xs text-text-muted font-mono truncate max-w-md">
+                  Target: {formUrl}
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
-                {!isRunning ? (
+                {isRunning ? (
                   <button
-                    onClick={startAutoSubmit}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition shadow-lg shadow-emerald-900/30 flex items-center gap-1.5"
+                    onClick={stopAutoSubmit}
+                    className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl transition shadow-lg shadow-rose-900/30 flex items-center gap-1.5 animate-pulse"
                   >
-                    <Play className="w-3.5 h-3.5 fill-white" /> Bắt đầu gửi
+                    <Square className="w-3.5 h-3.5 fill-white" /> Dừng tiến trình
                   </button>
                 ) : (
                   <button
-                    onClick={stopAutoSubmit}
-                    className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl transition shadow-lg shadow-rose-900/30 flex items-center gap-1.5 animate-pulse"
+                    onClick={resumeAutoSubmit}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition shadow-lg shadow-emerald-900/30 flex items-center gap-1.5"
                   >
-                    <Square className="w-3.5 h-3.5 fill-white" /> Dừng tiến trình
+                    <Play className="w-3.5 h-3.5 fill-white" /> Tiếp tục gửi
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="space-y-1.5">
+            {/* Progress Meter */}
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-bold">
-                <span className="flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <span className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                   Trạng thái: 
                   {isRunning ? (
-                    <span className="text-emerald-400 flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3 animate-spin" /> Đang gửi...
+                    <span className="text-emerald-400 flex items-center gap-1.5">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Đang tiến hành nộp Form...
                     </span>
                   ) : (
-                    <span className="text-text-muted flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Sẵn sàng
+                    <span className="text-amber-400 flex items-center gap-1">
+                      <Info className="w-3.5 h-3.5" /> Đã tạm dừng
                     </span>
                   )}
                 </span>
-                <span className="font-mono text-accent">{submittedCount} / {targetCount} ({progressPercent}%)</span>
+                <span className="font-mono text-accent font-black text-sm">{submittedCount} / {targetCount} ({progressPercent}%)</span>
               </div>
 
-              <div className="w-full bg-white/5 rounded-full h-3 overflow-hidden p-0.5 border border-white/10">
+              <div className="w-full bg-white/5 rounded-full h-4 overflow-hidden p-0.5 border border-white/10">
                 <div
                   className="bg-gradient-to-r from-accent via-teal-400 to-indigo-500 h-full rounded-full transition-all duration-300"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-2 text-center">
+                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                  <span className="block text-[10px] text-text-muted">Đã gửi thành công</span>
+                  <span className="font-black text-base text-emerald-400 font-mono">{submittedCount}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                  <span className="block text-[10px] text-text-muted">Lỗi</span>
+                  <span className="font-black text-base text-rose-400 font-mono">{errorCount}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                  <span className="block text-[10px] text-text-muted">Độ trễ mỗi lượt</span>
+                  <span className="font-black text-base text-accent font-mono">{submitDelay}s</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Card 5: Activity Logs & Preview Table */}
+          {/* Activity Logs Console */}
           <div className="card-glass rounded-2xl p-4 space-y-3 shadow-lg">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setActiveTab('logs')}
-                  className={`text-xs font-black transition pb-1 border-b-2 flex items-center gap-1.5 ${
-                    activeTab === 'logs'
-                      ? 'text-accent border-accent'
-                      : 'text-text-muted border-transparent hover:text-text-primary'
-                  }`}
-                >
-                  <Terminal className="w-3.5 h-3.5" /> Nhật ký (Logs)
-                </button>
-                <button
-                  onClick={() => setActiveTab('preview')}
-                  className={`text-xs font-black transition pb-1 border-b-2 flex items-center gap-1.5 ${
-                    activeTab === 'preview'
-                      ? 'text-accent border-accent'
-                      : 'text-text-muted border-transparent hover:text-text-primary'
-                  }`}
-                >
-                  <TableIcon className="w-3.5 h-3.5" /> Xem trước dữ liệu ({previewRows.length})
-                </button>
-              </div>
-
-              {activeTab === 'logs' ? (
-                <button onClick={clearLogs} className="text-[11px] text-text-muted hover:text-text-primary">
-                  Xóa log
-                </button>
-              ) : (
-                <button onClick={() => setPreviewRows([])} className="text-[11px] text-danger hover:underline">
-                  Xóa bảng
-                </button>
-              )}
+              <h3 className="font-black text-xs uppercase tracking-wider text-accent flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5" /> Nhật ký hoạt động chi tiết (Logs)
+              </h3>
+              <button onClick={clearLogs} className="text-[11px] text-text-muted hover:text-text-primary">
+                Xóa log
+              </button>
             </div>
 
-            {/* Tab 1: Logs */}
-            {activeTab === 'logs' && (
-              <div className="bg-black/40 rounded-xl p-3 font-mono text-xs overflow-y-auto max-h-[240px] border border-white/5 space-y-1.5 custom-scrollbar">
-                {logs.map(log => (
-                  <div key={log.id} className="flex items-start gap-2">
-                    <span className="text-text-muted shrink-0">[{log.timestamp}]</span>
-                    <span className={
-                      log.type === 'success' ? 'text-emerald-400 font-semibold' :
-                      log.type === 'error' ? 'text-rose-400 font-semibold' :
-                      log.type === 'warn' ? 'text-amber-400' :
-                      'text-text-primary'
-                    }>
-                      {log.message}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="bg-black/50 rounded-xl p-3.5 font-mono text-xs overflow-y-auto max-h-[300px] border border-white/5 space-y-1.5 custom-scrollbar">
+              {logs.map(log => (
+                <div key={log.id} className="flex items-start gap-2">
+                  <span className="text-text-muted shrink-0">[{log.timestamp}]</span>
+                  <span className={
+                    log.type === 'success' ? 'text-emerald-400 font-semibold' :
+                    log.type === 'error' ? 'text-rose-400 font-semibold' :
+                    log.type === 'warn' ? 'text-amber-400' :
+                    'text-text-primary'
+                  }>
+                    {log.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            {/* Tab 2: Preview Data Table */}
-            {activeTab === 'preview' && (
-              <div className="overflow-x-auto max-h-[240px] custom-scrollbar border border-white/5 rounded-xl">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-white/5 text-accent border-b border-white/10 font-bold">
-                      <th className="p-2.5 border-r border-white/5 w-10">STT</th>
-                      {fields.map(f => (
-                        <th key={f.id} className="p-2.5 border-r border-white/5 min-w-[130px]">
-                          {f.label || f.entryId}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-text-secondary">
-                    {previewRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={fields.length + 1} className="p-6 text-center text-text-muted">
-                          Chưa có dữ liệu. Hãy dán link Google Form hoặc bấm &quot;Sinh dữ liệu bằng Gemini AI&quot;!
-                        </td>
-                      </tr>
-                    ) : (
-                      previewRows.map((row, rIdx) => (
-                        <tr key={rIdx} className="hover:bg-white/[0.02] transition">
-                          <td className="p-2 font-mono font-bold text-text-muted border-r border-white/5">{rIdx + 1}</td>
-                          {fields.map(f => (
-                            <td key={f.id} className="p-2 border-r border-white/5 max-w-[180px] truncate" title={row[f.entryId] || ''}>
-                              {row[f.entryId] || '-'}
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+          {/* Bottom Navigation */}
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={() => setCurrentStep(2)}
+              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <ArrowLeft className="w-4 h-4" /> Quay lại Xem trước dữ liệu
+            </button>
+
+            {submittedCount >= targetCount && (
+              <button
+                onClick={() => setCurrentStep(4)}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition shadow-lg flex items-center gap-2"
+              >
+                Xem báo cáo thành công <ArrowRight className="w-4 h-4" />
+              </button>
             )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* STEP 4: THÀNH CÔNG */}
+      {/* ========================================================================= */}
+      {currentStep === 4 && (
+        <div className="space-y-4 animate-in zoom-in-95 duration-300">
+          <div className="card-glass rounded-3xl p-8 text-center space-y-6 shadow-2xl border-emerald-500/30 max-w-2xl mx-auto">
+            
+            <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 mx-auto shadow-xl shadow-emerald-500/20 animate-bounce-subtle">
+              <Trophy className="w-10 h-10" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black tracking-tight text-emerald-400">
+                🎉 HOÀN THÀNH XUẤT SẮC!
+              </h2>
+              <p className="text-sm text-text-secondary">
+                Đã tự động nộp thành công đủ <b className="text-accent">{submittedCount} / {targetCount}</b> lượt câu trả lời vào Google Form!
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-left p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+              <div>
+                <span className="block text-[11px] text-text-muted">Tổng số lượt gửi</span>
+                <span className="font-black text-lg text-emerald-400 font-mono">{submittedCount}</span>
+              </div>
+              <div>
+                <span className="block text-[11px] text-text-muted">Số câu hỏi / mẫu</span>
+                <span className="font-black text-lg text-accent font-mono">{fields.length}</span>
+              </div>
+              <div>
+                <span className="block text-[11px] text-text-muted">Trạng thái</span>
+                <span className="font-black text-xs text-emerald-400">Hoàn tất 100%</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                onClick={resetAllAndStartOver}
+                className="px-6 py-3 btn-primary text-xs font-black rounded-xl transition flex items-center gap-2 shadow-lg"
+              >
+                <RefreshCw className="w-4 h-4 text-on-accent" /> Nộp lượt mới từ đầu
+              </button>
+
+              <button
+                onClick={() => setCurrentStep(3)}
+                className="px-5 py-3 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl transition flex items-center gap-2"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <Terminal className="w-4 h-4 text-accent" /> Xem lại nhật ký (Logs)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden iframe for background POST submission */}
       <iframe name="hidden_iframe" id="hidden_iframe" style={{ display: 'none' }} />
