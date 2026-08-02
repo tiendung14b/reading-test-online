@@ -312,9 +312,16 @@ Cấu trúc JSON:
   ) {
     const fieldsDesc = fields.map((f, i) => {
       let typeInfo = f.type;
-      if (f.type === 'custom_choice') typeInfo += ` (Các lựa chọn có sẵn: ${f.options || 'Lựa chọn 1, Lựa chọn 2'})`;
-      if (f.type === 'number_range') typeInfo += ` (Khoảng số: ${f.options || '1,5'})`;
-      return `- Trường #${i + 1} [Entry ID: ${f.entryId}]: "${f.label || f.entryId}" | Loại: ${typeInfo}`;
+      if (['multiple_choice', 'dropdown', 'checkboxes', 'multiple_choice_grid', 'checkbox_grid'].includes(f.type)) {
+        typeInfo += ` (Các lựa chọn/cột có sẵn: ${f.options || 'Chưa tốt, Trung bình, Tốt'})`;
+      }
+      if (f.type === 'linear_scale') {
+        typeInfo += ` (Thang điểm khoảng số: ${f.options || '1,5'})`;
+      }
+      if (f.type === 'rating') {
+        typeInfo += ` (Số sao tối đa 3-10 sao: ${f.options || '5'})`;
+      }
+      return `- Trường #${i + 1} [Entry ID: ${f.entryId}]: "${f.label || f.entryId}" | Loại Google Form: ${typeInfo}`;
     }).join('\n');
 
     const prompt = `
@@ -322,21 +329,24 @@ Bạn là một trợ lý AI chuyên tạo dữ liệu ảo thực tế cho các
 Chủ đề / Ngữ cảnh khảo sát: ${formTopic || 'Khảo sát chung'}
 Yêu cầu về đối tượng / Thái độ / Persona: ${persona || 'Đa dạng, tự nhiên, chân thực'}
 
-Danh sách các trường cần sinh dữ liệu (${fields.length} trường):
+Danh sách các trường câu hỏi Google Form cần sinh dữ liệu (${fields.length} trường):
 ${fieldsDesc}
 
-Yêu cầu:
+Yêu cầu sinh dữ liệu chuẩn theo từng loại câu hỏi Google Form:
 1. Hãy sinh đúng ${count} dòng dữ liệu (mỗi dòng đại diện cho 1 câu trả lời đầy đủ của 1 người tham gia khảo sát).
-2. Tên người Việt Nam, Email, Số điện thoại phải thực tế và hợp lý. Email nên tương ứng với tên.
-3. Các ý kiến/nhận xét/góp ý (trường dạng comment/dạng chữ tự do) phải viết phong phú, tự nhiên, đúng ngữ cảnh chủ đề, tránh trùng lặp từ ngữ giữa các người điền.
-4. Với các trường trắc nghiệm (custom_choice), CHỈ CHỌN 1 trong các lựa chọn có sẵn đã liệt kê.
-5. Với các trường khoảng số (number_range), CHỈ ĐƯA RA giá trị nằm trong khoảng quy định.
-6. Kết quả trả về là một mảng JSON CHÍNH XÁC chứa ${count} đối tượng. Mỗi đối tượng là key-value với key là "entryId" (ví dụ: "entry.1000001") và value là giá trị trả lời tương ứng.
+2. "short_answer" (Trả lời ngắn): Viết câu trả lời ngắn gọn, tên người, email, SĐT hoặc cụm từ ngắn tự nhiên.
+3. "paragraph" (Đoạn văn): Viết ý kiến/nhận xét/góp ý chi tiết 1-3 câu, đa dạng ngữ điệu và từ vựng.
+4. "multiple_choice", "dropdown", "multiple_choice_grid": CHỈ CHỌN 1 trong các lựa chọn/cột có sẵn đã liệt kê.
+5. "checkboxes", "checkbox_grid": Chọn 1 hoặc nhiều lựa chọn/cột có sẵn đã liệt kê (phân cách bằng dấu phẩy nếu nhiều lựa chọn).
+6. "linear_scale" & "rating": Đưa ra số nguyên nằm trong khoảng quy định.
+7. "date": Chuỗi ngày định dạng YYYY-MM-DD.
+8. "time": Chuỗi giờ định dạng HH:mm.
+9. Kết quả trả về là một mảng JSON CHÍNH XÁC chứa ${count} đối tượng key-value (key là "entryId" ví dụ "entry.1000001" và value là giá trị câu trả lời).
 
 Cấu trúc JSON mong muốn:
 [
   {
-    "${fields[0]?.entryId || 'entry.1'}": "<Giá trị tương ứng>",
+    "${fields[0]?.entryId || 'entry.1'}": "<Giá trị câu trả lời>",
     ...
   }
 ]

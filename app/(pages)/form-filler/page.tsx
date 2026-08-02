@@ -86,6 +86,34 @@ function generatePhone(): string {
   return `${getRandomArr(prefixes)}${getRandomInt(1000000, 9999999)}`;
 }
 
+export interface SingleQuestion {
+  title: string;
+  type: 'single';
+  entryId: string;
+  options: string[] | null;
+}
+
+export interface GridRow {
+  rowTitle: string;
+  entryId: string;
+}
+
+export interface GridQuestion {
+  title: string;
+  type: 'grid';
+  columns: string[];
+  rows: GridRow[];
+}
+
+export type FormQuestion = SingleQuestion | GridQuestion;
+
+export interface ExtractFormResponse {
+  success: boolean;
+  formTitle?: string;
+  questions?: FormQuestion[];
+  error?: string;
+}
+
 export default function GoogleFormAutoFillerPage() {
   // Current Wizard Step: 1 | 2 | 3 | 4
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -95,13 +123,14 @@ export default function GoogleFormAutoFillerPage() {
   const [targetCount, setTargetCount] = useState<number>(10);
   const [submitDelay, setSubmitDelay] = useState<number>(1.5);
   
-  // Fields state - Default EMPTY as requested
+  // Fields state - Default EMPTY as requested by user
   const [fields, setFields] = useState<Field[]>([]);
 
   // AI Prompt State
   const [formTopic, setFormTopic] = useState<string>('');
   const [persona, setPersona] = useState<string>('Đa dạng sinh viên từ nhiều khoa, 80% hài lòng tích cực, 20% đóng góp ý kiến cải thiện.');
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
+  const [isExtractingForm, setIsExtractingForm] = useState<boolean>(false);
 
   // Engine state
   const [previewRows, setPreviewRows] = useState<Record<string, string>[]>([]);
@@ -138,6 +167,91 @@ export default function GoogleFormAutoFillerPage() {
 
   const clearLogs = () => setLogs([]);
 
+  // Server Form HTML Extractor (FB_PUBLIC_LOAD_DATA_ Parser)
+  const extractFormStructureWithServer = async (urlToParse: string) => {
+    const trimmed = urlToParse.trim();
+    if (!trimmed) {
+      toast.error('Vui lòng nhập đường dẫn Google Form!');
+      return;
+    }
+
+    setIsExtractingForm(true);
+    addLog('Đang kết nối Server để trích xuất toàn bộ cấu trúc Form...', 'info');
+
+    try {
+      const res = await fetch('/api/extract-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formUrl: trimmed })
+      });
+
+      const json: ExtractFormResponse = await res.json();
+
+      if (!res.ok || !json.success || !json.questions) {
+        throw new Error(json.error || 'Lỗi khi trích xuất Form');
+      }
+
+      if (json.formTitle) {
+        setFormTopic(json.formTitle);
+      }
+
+      const newFields: Field[] = [];
+      let idx = 1;
+
+      json.questions.forEach((q) => {
+        if (q.type === 'single') {
+          newFields.push({
+            id: Date.now().toString() + idx++,
+            entryId: q.entryId,
+            label: q.title,
+            type: q.options && q.options.length > 0 ? 'multiple_choice' : 'short_answer',
+            options: q.options ? q.options.join(', ') : ''
+          });
+        } else if (q.type === 'grid') {
+          q.rows.forEach((r) => {
+            newFields.push({
+              id: Date.now().toString() + idx++,
+              entryId: r.entryId,
+              label: `${q.title} - ${r.rowTitle}`,
+              type: 'multiple_choice_grid',
+              options: q.columns.join(', ')
+            });
+          });
+        }
+      });
+
+      // Set Form POST action URL
+      let actionUrl = trimmed.split('?')[0];
+      if (actionUrl.endsWith('/viewform')) {
+        actionUrl = actionUrl.replace(/\/viewform$/, '/formResponse');
+      } else if (!actionUrl.endsWith('/formResponse')) {
+        const match = actionUrl.match(/(https:\/\/docs\.google\.com\/forms\/d\/e\/[^/]+)/);
+        if (match) {
+          actionUrl = `${match[1]}/formResponse`;
+        }
+      }
+      setFormUrl(actionUrl);
+
+      if (newFields.length > 0) {
+        setFields(newFields);
+        addLog(`🎉 Đã trích xuất ${newFields.length} câu hỏi từ Google Form!`, 'success');
+        toast.success(`Đã trích xuất ${newFields.length} câu hỏi!`);
+      } else {
+        toast.error('Không tìm thấy câu hỏi trong Form.');
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      addLog(`Thông báo trích xuất HTML: ${errMsg}. Đang thử quét URL query...`, 'warn');
+      if (trimmed.includes('entry.')) {
+        extractEntriesFromUrl(trimmed);
+      } else {
+        toast.error(`Lỗi trích xuất: ${errMsg}`);
+      }
+    } finally {
+      setIsExtractingForm(false);
+    }
+  };
+
   // Extract Entry IDs from pasted Google Form URL
   const extractEntriesFromUrl = (urlToParse: string) => {
     const trimmed = urlToParse.trim();
@@ -170,7 +284,7 @@ export default function GoogleFormAutoFillerPage() {
             id: Date.now().toString() + idx,
             entryId: key,
             label: `Câu hỏi ${idx}`,
-            type: 'name',
+            type: 'short_answer',
             options: ''
           });
           idx++;
@@ -203,7 +317,7 @@ export default function GoogleFormAutoFillerPage() {
       id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
       entryId: data.entryId || `entry.${getRandomInt(10000000, 99999999)}`,
       label: data.label || 'Câu hỏi mới',
-      type: data.type || 'name',
+      type: data.type || 'short_answer',
       options: data.options || ''
     };
     setFields(prev => [...prev, newField]);
@@ -222,67 +336,100 @@ export default function GoogleFormAutoFillerPage() {
     setPreviewRows([]);
   };
 
-  // Preset templates
+  // Preset templates with exact Google Form question types
   const loadPresetTemplate = (type: 'student' | 'product' | 'event') => {
     if (type === 'student') {
       setFormUrl('https://docs.google.com/forms/d/e/1FAIpQLSc_EXAMPLE_ID_HERE/formResponse');
       setFormTopic('Khảo sát đánh giá trải nghiệm học tập của Sinh viên');
       setFields([
-        { id: '1', entryId: 'entry.1000001', label: 'Họ và tên sinh viên', type: 'name' },
-        { id: '2', entryId: 'entry.1000002', label: 'Email trường cấp', type: 'email' },
-        { id: '3', entryId: 'entry.1000003', label: 'Trường Đại học', type: 'uni' },
-        { id: '4', entryId: 'entry.1000004', label: 'Giới tính', type: 'custom_choice', options: 'Nam, Nữ, Khác' },
-        { id: '5', entryId: 'entry.1000005', label: 'Năm học', type: 'custom_choice', options: 'Năm 1, Năm 2, Năm 3, Năm 4' },
-        { id: '6', entryId: 'entry.1000006', label: 'Điểm đánh giá chất lượng (1-5)', type: 'number_range', options: '1,5' },
-        { id: '7', entryId: 'entry.1000007', label: 'Ý kiến / Góp ý', type: 'comment' },
+        { id: '1', entryId: 'entry.1000001', label: 'Họ và tên sinh viên', type: 'short_answer' },
+        { id: '2', entryId: 'entry.1000002', label: 'Email trường cấp', type: 'short_answer' },
+        { id: '3', entryId: 'entry.1000003', label: 'Trường Đại học', type: 'short_answer' },
+        { id: '4', entryId: 'entry.1000004', label: 'Giới tính', type: 'multiple_choice', options: 'Nam, Nữ, Khác' },
+        { id: '5', entryId: 'entry.1000005', label: 'Năm học', type: 'dropdown', options: 'Năm 1, Năm 2, Năm 3, Năm 4' },
+        { id: '6', entryId: 'entry.1000006', label: 'Điểm đánh giá chất lượng (1-5)', type: 'linear_scale', options: '1,5' },
+        { id: '7', entryId: 'entry.1000007', label: 'Ý kiến / Góp ý', type: 'paragraph' },
       ]);
       addLog('Đã nạp mẫu: Khảo sát sinh viên', 'info');
     } else if (type === 'product') {
       setFormTopic('Khảo sát ý kiến người dùng về ứng dụng di động');
       setFields([
-        { id: '1', entryId: 'entry.2000001', label: 'Họ và tên khách hàng', type: 'name' },
-        { id: '2', entryId: 'entry.2000002', label: 'Số điện thoại', type: 'phone' },
-        { id: '3', entryId: 'entry.2000003', label: 'Email', type: 'email' },
-        { id: '4', entryId: 'entry.2000004', label: 'Tần suất sử dụng', type: 'custom_choice', options: 'Hàng ngày, Hàng tuần, Hàng tháng, Hiếm khi' },
-        { id: '5', entryId: 'entry.2000005', label: 'Mức độ hài lòng tính năng (1-10)', type: 'number_range', options: '1,10' },
-        { id: '6', entryId: 'entry.2000006', label: 'Cần bổ sung tính năng gì', type: 'comment' },
+        { id: '1', entryId: 'entry.2000001', label: 'Họ và tên khách hàng', type: 'short_answer' },
+        { id: '2', entryId: 'entry.2000002', label: 'Số điện thoại', type: 'short_answer' },
+        { id: '3', entryId: 'entry.2000003', label: 'Tần suất sử dụng', type: 'multiple_choice', options: 'Hàng ngày, Hàng tuần, Hàng tháng, Hiếm khi' },
+        { id: '4', entryId: 'entry.2000004', label: 'Tính năng thường dùng', type: 'checkboxes', options: 'Tra cứu, Luyện tập, Xem báo cáo, Đặt lịch' },
+        { id: '5', entryId: 'entry.2000005', label: 'Mức độ hài lòng (1-5 sao)', type: 'rating' },
+        { id: '6', entryId: 'entry.2000006', label: 'Cần bổ sung tính năng gì', type: 'paragraph' },
       ]);
       addLog('Đã nạp mẫu: Đánh giá sản phẩm', 'info');
     } else if (type === 'event') {
       setFormTopic('Đăng ký tham gia Workshop công nghệ AI 2026');
       setFields([
-        { id: '1', entryId: 'entry.3000001', label: 'Họ và tên người tham gia', type: 'name' },
-        { id: '2', entryId: 'entry.3000002', label: 'Email nhận vé', type: 'email' },
-        { id: '3', entryId: 'entry.3000003', label: 'Số điện thoại Zalo', type: 'phone' },
-        { id: '4', entryId: 'entry.3000004', label: 'Hình thức tham gia', type: 'custom_choice', options: 'Trực tiếp (Offline), Trực tuyến (Online Zoom)' },
-        { id: '5', entryId: 'entry.3000005', label: 'Câu hỏi dành cho diễn giả', type: 'comment' },
+        { id: '1', entryId: 'entry.3000001', label: 'Họ và tên người tham gia', type: 'short_answer' },
+        { id: '2', entryId: 'entry.3000002', label: 'Email nhận vé', type: 'short_answer' },
+        { id: '3', entryId: 'entry.3000003', label: 'Hình thức tham gia', type: 'multiple_choice', options: 'Trực tiếp (Offline), Trực tuyến (Online Zoom)' },
+        { id: '4', entryId: 'entry.3000004', label: 'Ngày đăng ký dự kiến', type: 'date' },
+        { id: '5', entryId: 'entry.3000005', label: 'Giờ có mặt dự kiến', type: 'time' },
+        { id: '6', entryId: 'entry.3000006', label: 'Câu hỏi dành cho diễn giả', type: 'paragraph' },
       ]);
       addLog('Đã nạp mẫu: Đăng ký sự kiện', 'info');
     }
   };
 
-  // Local Fast Generation Engine
+  // Local Fast Generation Engine for Google Form Question Types
   const generateLocalRowValue = (field: Field, rowDataRecord: Record<string, string>): string => {
     switch (field.type) {
-      case 'name':
+      case 'short_answer': {
+        const lowerLabel = (field.label || '').toLowerCase();
+        if (lowerLabel.includes('họ') || lowerLabel.includes('tên') || lowerLabel.includes('name')) {
+          return generateVietnameseName();
+        }
+        if (lowerLabel.includes('email')) {
+          const nameVal = rowDataRecord['name'] || generateVietnameseName();
+          return generateEmail(nameVal);
+        }
+        if (lowerLabel.includes('thoại') || lowerLabel.includes('phone') || lowerLabel.includes('sđt')) {
+          return generatePhone();
+        }
+        if (lowerLabel.includes('trường') || lowerLabel.includes('uni') || lowerLabel.includes('học')) {
+          return getRandomArr(UNIVERSITIES);
+        }
         return generateVietnameseName();
-      case 'email':
-        const nameVal = rowDataRecord['name'] || generateVietnameseName();
-        return generateEmail(nameVal);
-      case 'phone':
-        return generatePhone();
-      case 'uni':
-        return getRandomArr(UNIVERSITIES);
-      case 'comment':
+      }
+      case 'paragraph':
         return getRandomArr(COMMENTS);
-      case 'number_range':
+      case 'multiple_choice':
+      case 'dropdown':
+      case 'multiple_choice_grid': {
+        const choices = (field.options || 'Chưa tốt, Trung bình, Tốt').split(',').map(s => s.trim());
+        return getRandomArr(choices);
+      }
+      case 'checkboxes':
+      case 'checkbox_grid': {
+        const choices = (field.options || 'Chưa tốt, Trung bình, Tốt').split(',').map(s => s.trim());
+        return getRandomArr(choices);
+      }
+      case 'linear_scale': {
         const parts = (field.options || '1,5').split(',').map(n => parseInt(n.trim()) || 1);
         return String(getRandomInt(parts[0] || 1, parts[1] || 5));
-      case 'custom_choice':
-        const choices = (field.options || 'Lựa chọn 1, Lựa chọn 2').split(',').map(s => s.trim());
-        return getRandomArr(choices);
+      }
+      case 'rating': {
+        const maxStar = Math.min(Math.max(parseInt(field.options || '5') || 5, 3), 10);
+        return String(getRandomInt(1, maxStar));
+      }
+      case 'date': {
+        const y = getRandomInt(2025, 2026);
+        const m = String(getRandomInt(1, 12)).padStart(2, '0');
+        const d = String(getRandomInt(1, 28)).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+      case 'time': {
+        const h = String(getRandomInt(8, 20)).padStart(2, '0');
+        const min = String(getRandomInt(0, 59)).padStart(2, '0');
+        return `${h}:${min}`;
+      }
       default:
-        return 'Dữ liệu thử nghiệm';
+        return 'Dữ liệu ảo';
     }
   };
 
@@ -296,7 +443,9 @@ export default function GoogleFormAutoFillerPage() {
       const row: Record<string, string> = {};
       fields.forEach(f => {
         const val = generateLocalRowValue(f, row);
-        if (f.type === 'name') row['name'] = val;
+        if (f.type === 'short_answer' && (f.label.toLowerCase().includes('tên') || f.label.toLowerCase().includes('họ'))) {
+          row['name'] = val;
+        }
         row[f.entryId] = val;
       });
       newRows.push(row);
@@ -388,7 +537,9 @@ export default function GoogleFormAutoFillerPage() {
         const row: Record<string, string> = {};
         fields.forEach(f => {
           const val = generateLocalRowValue(f, row);
-          if (f.type === 'name') row['name'] = val;
+          if (f.type === 'short_answer' && (f.label.toLowerCase().includes('tên') || f.label.toLowerCase().includes('họ'))) {
+            row['name'] = val;
+          }
           row[f.entryId] = val;
         });
         generated.push(row);
@@ -438,7 +589,9 @@ export default function GoogleFormAutoFillerPage() {
     } else {
       fieldsRef.current.forEach(f => {
         const val = generateLocalRowValue(f, rowData);
-        if (f.type === 'name') rowData['name'] = val;
+        if (f.type === 'short_answer' && (f.label.toLowerCase().includes('tên') || f.label.toLowerCase().includes('họ'))) {
+          rowData['name'] = val;
+        }
         rowData[f.entryId] = val;
       });
     }
@@ -612,10 +765,13 @@ export default function GoogleFormAutoFillerPage() {
                         Dán Form URL hoặc Pre-filled Link:
                       </label>
                       <button
-                        onClick={() => extractEntriesFromUrl(formUrl)}
-                        className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1"
+                        onClick={() => extractFormStructureWithServer(formUrl)}
+                        disabled={isExtractingForm}
+                        className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1 disabled:opacity-50"
+                        title="Phân tích tự động HTML trang Form để lấy tiêu đề, câu hỏi đơn & câu hỏi dạng Lưới"
                       >
-                        <Wand2 className="w-3 h-3" /> Trích xuất Entry ID
+                        {isExtractingForm ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                        Trích xuất tự động (Full HTML)
                       </button>
                     </div>
                     <input
@@ -722,34 +878,55 @@ export default function GoogleFormAutoFillerPage() {
                             onChange={(e) => updateField(f.id, 'type', e.target.value)}
                             className="text-xs input-dark p-1.5 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)]"
                           >
-                            <option value="name" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Họ tên Việt Nam</option>
-                            <option value="email" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Email ngẫu nhiên</option>
-                            <option value="phone" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Số điện thoại</option>
-                            <option value="uni" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Trường Đại học</option>
-                            <option value="comment" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Ý kiến / Nhận xét</option>
-                            <option value="number_range" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Số (Min,Max)</option>
-                            <option value="custom_choice" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Trắc nghiệm (Custom)</option>
+                            <option value="short_answer" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Short answer (Trả lời ngắn)</option>
+                            <option value="paragraph" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Paragraph (Đoạn văn)</option>
+                            <option value="multiple_choice" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Multiple choice (Trắc nghiệm)</option>
+                            <option value="checkboxes" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Checkboxes (Hộp kiểm)</option>
+                            <option value="dropdown" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Dropdown (Menu thả xuống)</option>
+                            <option value="multiple_choice_grid" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Multiple choice grid (Lưới trắc nghiệm)</option>
+                            <option value="checkbox_grid" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Checkbox grid (Lưới hộp kiểm)</option>
+                            <option value="linear_scale" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Linear scale (Thang đo)</option>
+                            <option value="rating" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Rating (Đánh giá sao)</option>
+                            <option value="date" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Date (Ngày tháng)</option>
+                            <option value="time" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Time (Giờ giấc)</option>
                           </select>
                         </div>
 
-                        {f.type === 'custom_choice' && (
+                        {['multiple_choice', 'checkboxes', 'dropdown', 'multiple_choice_grid', 'checkbox_grid'].includes(f.type) && (
                           <input
                             type="text"
                             value={f.options || ''}
                             onChange={(e) => updateField(f.id, 'options', e.target.value)}
-                            placeholder="Các lựa chọn, phân cách bằng dấu phẩy (vd: Nam, Nữ, Khác)"
+                            placeholder="Các giá trị cột, phân cách bằng dấu phẩy (vd: Chưa tốt, Trung bình, Tốt)"
                             className="w-full text-xs input-dark p-1.5 rounded-lg"
                           />
                         )}
 
-                        {f.type === 'number_range' && (
+                        {f.type === 'linear_scale' && (
                           <input
                             type="text"
                             value={f.options || '1,5'}
                             onChange={(e) => updateField(f.id, 'options', e.target.value)}
-                            placeholder="Khoảng Min,Max (vd: 1,5 hoặc 18,60)"
+                            placeholder="Khoảng Min,Max (vd: 1,5 hoặc 1,10)"
                             className="w-full text-xs input-dark p-1.5 rounded-lg"
                           />
+                        )}
+
+                        {f.type === 'rating' && (
+                          <select
+                            value={f.options || '5'}
+                            onChange={(e) => updateField(f.id, 'options', e.target.value)}
+                            className="w-full text-xs input-dark p-1.5 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] font-bold"
+                          >
+                            <option value="3" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">3 sao (Thang 1 - 3 sao)</option>
+                            <option value="4" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">4 sao (Thang 1 - 4 sao)</option>
+                            <option value="5" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">5 sao (Thang 1 - 5 sao) [Mặc định]</option>
+                            <option value="6" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">6 sao (Thang 1 - 6 sao)</option>
+                            <option value="7" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">7 sao (Thang 1 - 7 sao)</option>
+                            <option value="8" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">8 sao (Thang 1 - 8 sao)</option>
+                            <option value="9" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">9 sao (Thang 1 - 9 sao)</option>
+                            <option value="10" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">10 sao (Thang 1 - 10 sao)</option>
+                          </select>
                         )}
                       </div>
                     ))
