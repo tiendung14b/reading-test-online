@@ -215,6 +215,12 @@ body {
   box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
 }
 
+/* Select & Option Dropdown styling for dark/light mode */
+select.input-dark option, select option {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
 /* Lesson Content Typography */
 .lesson-content {
   color: var(--text-primary); /* Changed to primary for better contrast */

@@ -7,6 +7,7 @@ import { Transition, Dialog, DialogPanel } from '@headlessui/react';
 import parse from 'html-react-parser';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 type Lesson = {
   id: number;
@@ -31,6 +32,7 @@ export default function LessonViewerPage() {
   const [activeId, setActiveId] = useState<string>('');
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [showFloatingToc, setShowFloatingToc] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -105,8 +107,11 @@ export default function LessonViewerPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this lesson?')) return;
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
     try {
       const res = await fetch(`/api/lessons/${params.id}`, { method: 'DELETE' });
       const data = await res.json();
@@ -118,6 +123,8 @@ export default function LessonViewerPage() {
       }
     } catch (err) {
       toast.error('Failed to delete lesson');
+    } finally {
+      setShowDeleteModal(false);
     }
   };
 
@@ -175,7 +182,7 @@ export default function LessonViewerPage() {
           </button>
           {/* Delete Button */}
           <button
-            onClick={handleDelete}
+            onClick={handleDeleteClick}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-danger/10 text-text-muted hover:text-danger transition-colors"
             title="Delete Lesson"
           >
@@ -347,6 +354,17 @@ export default function LessonViewerPage() {
           <List className="w-6 h-6" />
         </button>
       </div>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal 
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Delete Lesson"
+        message={`Are you sure you want to delete "${lesson.title}"? This action cannot be undone and all content will be permanently removed.`}
+        confirmText="Delete Lesson"
+        variant="danger"
+      />
     </div>
   );
 }

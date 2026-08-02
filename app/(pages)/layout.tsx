@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library, Sparkles, MessagesSquare } from 'lucide-react';
+import { BookOpen, PlusCircle, LayoutDashboard, Settings, HelpCircle, Menu, X, ChevronLeft, ChevronRight, History, Library, Sparkles, MessagesSquare, FileSpreadsheet } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import BottomNav from '@/components/BottomNav';
 
@@ -31,6 +31,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/form-filler', icon: FileSpreadsheet, label: 'Google Form AI' },
     { href: '/history', icon: History, label: 'Practice History' },
     { href: '/ai-history', icon: MessagesSquare, label: 'AI Chat History' },
     { href: '/lessons', icon: Library, label: 'Lessons' },
@@ -165,6 +166,7 @@ export default function PagesLayout({ children }: { children: React.ReactNode })
           <div className="flex-1 flex items-center gap-3">
             <h2 className="text-sm font-black uppercase tracking-widest text-text-muted">
               {pathname === '/' ? 'Dashboard' : 
+               pathname === '/form-filler' ? 'Google Form AI Studio' :
                pathname.startsWith('/history') ? 'Archive' :
                pathname === '/create' ? 'Creator' : 
                'Platform'}

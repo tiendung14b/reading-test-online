@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BookOpen, PlusCircle, Clock, Trash2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AILessonModal from '@/components/Editor/AILessonModal';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import { useRouter } from 'next/navigation';
 import { injectHeadingIds } from '@/lib/lesson-utils';
 
@@ -19,6 +20,7 @@ export default function LessonsPage() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [lessonToDelete, setLessonToDelete] = useState<number | null>(null);
   const router = useRouter();
 
   const fetchLessons = () => {
@@ -35,12 +37,16 @@ export default function LessonsPage() {
     fetchLessons();
   }, []);
 
-  const handleDelete = async (id: number, e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent navigating to the lesson
-    if (!confirm('Are you sure you want to delete this lesson?')) return;
+  const handleDeleteClick = (id: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    setLessonToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!lessonToDelete) return;
 
     try {
-      const res = await fetch(`/api/lessons/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/lessons/${lessonToDelete}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         toast.success('Lesson deleted successfully');
@@ -50,6 +56,8 @@ export default function LessonsPage() {
       }
     } catch (err) {
       toast.error('Failed to delete lesson');
+    } finally {
+      setLessonToDelete(null);
     }
   };
   const handleAIGenerated = async (lesson: { title: string; topic: string; content: string }) => {
@@ -169,7 +177,7 @@ export default function LessonsPage() {
                     
                     {/* Delete button (absolute positioned) */}
                     <button 
-                      onClick={(e) => handleDelete(lesson.id, e)}
+                      onClick={(e) => handleDeleteClick(lesson.id, e)}
                       className="absolute bottom-4 right-4 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-subtle hover:bg-danger/10 text-text-muted hover:text-danger z-10"
                       title="Delete Lesson"
                     >
@@ -182,6 +190,16 @@ export default function LessonsPage() {
           ))}
         </div>
       )}
+      {/* Confirm Delete Modal */}
+      <ConfirmModal 
+        isOpen={lessonToDelete !== null}
+        onClose={() => setLessonToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Delete Lesson"
+        message="Are you sure you want to delete this lesson? This action cannot be undone and all content will be permanently removed."
+        confirmText="Delete Lesson"
+        variant="danger"
+      />
     </div>
   );
 }

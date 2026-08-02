@@ -299,5 +299,64 @@ Cấu trúc JSON:
       console.error("Lỗi khi tạo bài học bằng AI:", error);
       throw error;
     }
+  },
+
+  /**
+   * Sinh hàng loạt dữ liệu câu trả lời cho Google Form dựa trên ngữ cảnh và cấu hình trường
+   */
+  async generateFormResponses(
+    formTopic: string,
+    persona: string,
+    fields: { id: string; entryId: string; label: string; type: string; options?: string }[],
+    count: number = 5
+  ) {
+    const fieldsDesc = fields.map((f, i) => {
+      let typeInfo = f.type;
+      if (f.type === 'custom_choice') typeInfo += ` (Các lựa chọn có sẵn: ${f.options || 'Lựa chọn 1, Lựa chọn 2'})`;
+      if (f.type === 'number_range') typeInfo += ` (Khoảng số: ${f.options || '1,5'})`;
+      return `- Trường #${i + 1} [Entry ID: ${f.entryId}]: "${f.label || f.entryId}" | Loại: ${typeInfo}`;
+    }).join('\n');
+
+    const prompt = `
+Bạn là một trợ lý AI chuyên tạo dữ liệu ảo thực tế cho các cuộc khảo sát Google Form bằng tiếng Việt.
+Chủ đề / Ngữ cảnh khảo sát: ${formTopic || 'Khảo sát chung'}
+Yêu cầu về đối tượng / Thái độ / Persona: ${persona || 'Đa dạng, tự nhiên, chân thực'}
+
+Danh sách các trường cần sinh dữ liệu (${fields.length} trường):
+${fieldsDesc}
+
+Yêu cầu:
+1. Hãy sinh đúng ${count} dòng dữ liệu (mỗi dòng đại diện cho 1 câu trả lời đầy đủ của 1 người tham gia khảo sát).
+2. Tên người Việt Nam, Email, Số điện thoại phải thực tế và hợp lý. Email nên tương ứng với tên.
+3. Các ý kiến/nhận xét/góp ý (trường dạng comment/dạng chữ tự do) phải viết phong phú, tự nhiên, đúng ngữ cảnh chủ đề, tránh trùng lặp từ ngữ giữa các người điền.
+4. Với các trường trắc nghiệm (custom_choice), CHỈ CHỌN 1 trong các lựa chọn có sẵn đã liệt kê.
+5. Với các trường khoảng số (number_range), CHỈ ĐƯA RA giá trị nằm trong khoảng quy định.
+6. Kết quả trả về là một mảng JSON CHÍNH XÁC chứa ${count} đối tượng. Mỗi đối tượng là key-value với key là "entryId" (ví dụ: "entry.1000001") và value là giá trị trả lời tương ứng.
+
+Cấu trúc JSON mong muốn:
+[
+  {
+    "${fields[0]?.entryId || 'entry.1'}": "<Giá trị tương ứng>",
+    ...
+  }
+]
+`;
+
+    try {
+      return await executeWithTokenRotation(async (ai) => {
+        const response = await ai.models.generateContent({
+          model: CHEAPEST_MODEL,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.85,
+          }
+        });
+        return JSON.parse(response.text || '[]');
+      });
+    } catch (error) {
+      console.error("Lỗi khi sinh dữ liệu form bằng AI:", error);
+      throw error;
+    }
   }
 };
