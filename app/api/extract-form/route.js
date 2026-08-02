@@ -143,9 +143,32 @@ export async function POST(request) {
       }
     });
 
+    let actionUrl = response.url || targetUrl;
+    actionUrl = actionUrl.split('?')[0];
+    if (actionUrl.endsWith('/viewform')) {
+      actionUrl = actionUrl.replace(/\/viewform$/, '/formResponse');
+    } else if (actionUrl.endsWith('/edit') || actionUrl.endsWith('/closedform')) {
+      actionUrl = actionUrl.replace(/\/(edit|closedform)$/, '/formResponse');
+    } else if (!actionUrl.endsWith('/formResponse')) {
+      const match = actionUrl.match(/(https:\/\/docs\.google\.com\/forms\/d\/(?:e\/)?[^/]+)/);
+      if (match) {
+        actionUrl = `${match[1]}/formResponse`;
+      }
+    }
+
+    let fbzx = null;
+    const fbzxMatch = html.match(/name="fbzx"\s+value="([^"]+)"/) || html.match(/name="fbzx"\s+value='([^']+)'/);
+    if (fbzxMatch) {
+      fbzx = fbzxMatch[1];
+    } else if (loadData[14]) {
+      fbzx = String(loadData[14]);
+    }
+
     return NextResponse.json({
       success: true,
       formTitle,
+      actionUrl,
+      fbzx,
       questions
     });
 

@@ -110,6 +110,8 @@ export type FormQuestion = SingleQuestion | GridQuestion;
 export interface ExtractFormResponse {
   success: boolean;
   formTitle?: string;
+  actionUrl?: string;
+  fbzx?: string;
   questions?: FormQuestion[];
   error?: string;
 }
@@ -122,6 +124,7 @@ export default function GoogleFormAutoFillerPage() {
   const [formUrl, setFormUrl] = useState<string>('');
   const [targetCount, setTargetCount] = useState<number>(10);
   const [submitDelay, setSubmitDelay] = useState<number>(1.5);
+  const [fbzxToken, setFbzxToken] = useState<string>('');
   
   // Fields state - Default EMPTY as requested by user
   const [fields, setFields] = useState<Field[]>([]);
@@ -150,6 +153,7 @@ export default function GoogleFormAutoFillerPage() {
   const fieldsRef = useRef<Field[]>([]);
   const previewRowsRef = useRef<Record<string, string>[]>([]);
   const formUrlRef = useRef<string>('');
+  const fbzxRef = useRef<string>('');
 
   useEffect(() => {
     isRunningRef.current = isRunning;
@@ -158,7 +162,8 @@ export default function GoogleFormAutoFillerPage() {
     fieldsRef.current = fields;
     previewRowsRef.current = previewRows;
     formUrlRef.current = formUrl;
-  }, [isRunning, submittedCount, targetCount, fields, previewRows, formUrl]);
+    fbzxRef.current = fbzxToken;
+  }, [isRunning, submittedCount, targetCount, fields, previewRows, formUrl, fbzxToken]);
 
   const addLog = (message: string, type: 'info' | 'success' | 'warn' | 'error' = 'info') => {
     const time = new Date().toLocaleTimeString();
@@ -195,6 +200,10 @@ export default function GoogleFormAutoFillerPage() {
         setFormTopic(json.formTitle);
       }
 
+      if (json.fbzx) {
+        setFbzxToken(json.fbzx);
+      }
+
       const newFields: Field[] = [];
       let idx = 1;
 
@@ -220,17 +229,21 @@ export default function GoogleFormAutoFillerPage() {
         }
       });
 
-      // Set Form POST action URL
-      let actionUrl = trimmed.split('?')[0];
-      if (actionUrl.endsWith('/viewform')) {
-        actionUrl = actionUrl.replace(/\/viewform$/, '/formResponse');
-      } else if (!actionUrl.endsWith('/formResponse')) {
-        const match = actionUrl.match(/(https:\/\/docs\.google\.com\/forms\/d\/e\/[^/]+)/);
-        if (match) {
-          actionUrl = `${match[1]}/formResponse`;
+      // Set Form POST action URL to standardized /formResponse endpoint
+      if (json.actionUrl) {
+        setFormUrl(json.actionUrl);
+      } else {
+        let actionUrl = trimmed.split('?')[0];
+        if (actionUrl.endsWith('/viewform')) {
+          actionUrl = actionUrl.replace(/\/viewform$/, '/formResponse');
+        } else if (!actionUrl.endsWith('/formResponse')) {
+          const match = actionUrl.match(/(https:\/\/docs\.google\.com\/forms\/d\/(?:e\/)?[^/]+)/);
+          if (match) {
+            actionUrl = `${match[1]}/formResponse`;
+          }
         }
+        setFormUrl(actionUrl);
       }
-      setFormUrl(actionUrl);
 
       if (newFields.length > 0) {
         setFields(newFields);
@@ -563,7 +576,7 @@ export default function GoogleFormAutoFillerPage() {
     runSubmissionLoop(formUrl.trim(), submitDelay * 1000, currentRows);
   };
 
-  const runSubmissionLoop = (url: string, delayMs: number, dataRows: Record<string, string>[]) => {
+  const runSubmissionLoop = async (url: string, delayMs: number, dataRows: Record<string, string>[]) => {
     if (!isRunningRef.current) {
       return;
     }
@@ -597,54 +610,79 @@ export default function GoogleFormAutoFillerPage() {
     }
 
     const logSummary: string[] = [];
-    const formBody = new URLSearchParams();
+    const payloadObj: Record<string, string | string[]> = {};
 
+    // Build DOM hidden form elements for fallback
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = url;
     form.target = 'hidden_iframe';
     form.style.display = 'none';
 
-    fieldsRef.current.forEach(f => {
-      const val = rowData[f.entryId] || '';
-      formBody.append(f.entryId, val);
-
+    const appendHiddenInput = (name: string, val: string) => {
       const input = document.createElement('input');
       input.type = 'hidden';
-      input.name = f.entryId;
+      input.name = name;
       input.value = val;
       form.appendChild(input);
+    };
+
+    appendHiddenInput('fvv', '1');
+    appendHiddenInput('pageHistory', '0');
+    if (fbzxRef.current) {
+      appendHiddenInput('fbzx', fbzxRef.current);
+    }
+
+    fieldsRef.current.forEach(f => {
+      const val = rowData[f.entryId] || '';
+
+      if (['checkboxes', 'checkbox_grid'].includes(f.type) && val.includes(',')) {
+        const optionsArray = val.split(',').map(s => s.trim()).filter(Boolean);
+        payloadObj[f.entryId] = optionsArray;
+        optionsArray.forEach(opt => appendHiddenInput(f.entryId, opt));
+      } else {
+        payloadObj[f.entryId] = val;
+        appendHiddenInput(f.entryId, val);
+      }
 
       logSummary.push(`${f.label || f.entryId}: "${val}"`);
     });
 
+    // 1. Primary Submission: Server-side Proxy POST (Guarantees Google Form records the response)
+    let serverSuccess = false;
     try {
-      fetch(url, {
+      const res = await fetch('/api/submit-form', {
         method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formBody.toString()
-      }).catch(() => {
-        setErrorCount(prev => prev + 1);
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          formUrl: url,
+          payload: payloadObj,
+          fbzx: fbzxRef.current
+        })
       });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        serverSuccess = true;
+      }
     } catch (e) {}
 
+    // 2. Secondary Fallback: Client DOM iframe submit
     document.body.appendChild(form);
-
     try {
       form.submit();
-      addLog(`[${nextCount}/${targetCountRef.current}] Gửi thành công: ${logSummary.slice(0, 2).join(' | ')}...`, 'success');
-    } catch (err: unknown) {
-      setErrorCount(prev => prev + 1);
-      const errMsg = err instanceof Error ? err.message : String(err);
-      addLog(`Lỗi nộp lượt #${nextCount}: ${errMsg}`, 'error');
-    }
+    } catch (e) {}
 
     setTimeout(() => {
       if (document.body.contains(form)) {
         document.body.removeChild(form);
       }
     }, 1000);
+
+    if (serverSuccess) {
+      addLog(`[${nextCount}/${targetCountRef.current}] Gửi thành công (Đã ghi nhận vào Google Form): ${logSummary.slice(0, 2).join(' | ')}...`, 'success');
+    } else {
+      addLog(`[${nextCount}/${targetCountRef.current}] Đã nộp qua DOM: ${logSummary.slice(0, 2).join(' | ')}...`, 'info');
+    }
 
     timerRef.current = setTimeout(() => {
       runSubmissionLoop(url, delayMs, dataRows);
